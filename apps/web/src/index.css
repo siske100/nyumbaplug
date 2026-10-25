@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/fraunces";
+
+/* Palette: warm ember orange over graphite greys. Text is a soft bone white, never pure white. */
+@theme {
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", Georgia, serif;
+
+  --color-graphite-950: #0d0d0f;
+  --color-graphite-900: #131316;
+  --color-graphite-800: #1b1c20;
+  --color-graphite-700: #26282d;
+  --color-graphite-600: #34373d;
+  --color-graphite-500: #4a4e56;
+  --color-graphite-400: #7b808a;
+  --color-graphite-300: #a4a9b2;
+  --color-graphite-200: #c9cdd3;
+
+  --color-ember-300: #ffc27a;
+  --color-ember-400: #ffa84d;
+  --color-ember-500: #f28c28;
+  --color-ember-600: #d9731a;
+
+  --color-bone: #f4f2ef;
+  --color-ok: #6fd39a;
+  --color-danger: #ff7a6e;
+}
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    @apply bg-graphite-950 text-bone font-sans antialiased;
+    min-height: 100dvh;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.015em; font-weight: 500; }
+  :focus-visible { outline: 2px solid var(--color-ember-400); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: rgb(242 140 40 / 0.35); }
+}
+
+/* One ambient light source (ember) and one cool grey, fixed behind everything.
+   The glass panels only read as glass because there is light to refract. */
+.ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--color-graphite-950); }
+.ambient::before, .ambient::after { content: ""; position: absolute; border-radius: 9999px; filter: blur(90px); }
+.ambient::before { width: 46rem; height: 46rem; top: -16rem; left: -10rem; background: radial-gradient(circle, rgb(242 140 40 / 0.34), transparent 65%); }
+.ambient::after { width: 40rem; height: 40rem; bottom: -14rem; right: -8rem; background: radial-gradient(circle, rgb(122 130 146 / 0.30), transparent 65%); }
+
+/* Glass. Three levels of emphasis so the hierarchy is visible at a glance. */
+.glass {
+  position: relative;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.025));
+  border: 1px solid rgb(255 255 255 / 0.09);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.38), inset 0 1px 0 rgb(255 255 255 / 0.07);
+  border-radius: 1rem;
+}
+.glass-quiet {
+  background: rgb(255 255 255 / 0.035);
+  border: 1px solid rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 0.875rem;
+}
+.glass-hero {
+  border-radius: 1.5rem;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.03));
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+}
+/* Ember edge light on the hero panel only. */
+.glass-hero::before {
+  content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgb(255 168 77 / 0.7), rgb(255 168 77 / 0) 38%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* Fallbacks: no blur support, or the visitor asked for less transparency. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-quiet, .glass-hero { background: rgb(30 31 35 / 0.94); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-quiet, .glass-hero { background: rgb(30 31 35 / 0.97); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.skeleton { background: linear-gradient(90deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.04)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 0.75rem; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ---------- Device levels. Chosen automatically (see lib/device.ts), set on <html data-perf>. ---------- */
+html[data-perf="standard"] .glass, html[data-perf="standard"] .glass-hero { backdrop-filter: blur(12px) saturate(130%); -webkit-backdrop-filter: blur(12px) saturate(130%); }
+html[data-perf="lite"] .glass, html[data-perf="lite"] .glass-quiet, html[data-perf="lite"] .glass-hero {
+  backdrop-filter: none; -webkit-backdrop-filter: none; background: rgb(30 31 35 / 0.96); box-shadow: none;
+}
+html[data-perf="lite"] .ambient::before, html[data-perf="lite"] .ambient::after { filter: none; opacity: 0.55; }
+html[data-perf="lite"] *, html[data-perf="lite"] *::before, html[data-perf="lite"] *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+
+/* ---------- Cursor light: only on devices with a mouse, written as CSS variables so React never re-renders ---------- */
+.cursor-field { --mx: 0.5; --my: 0.5; }
+.cursor-glow::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  background: radial-gradient(420px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgb(242 140 40 / 0.16), transparent 60%);
+}
+.cursor-glow:hover::after { opacity: 1; }
+@media (hover: none) { .cursor-glow::after { display: none; } }
+html[data-perf="lite"] .cursor-glow::after { display: none; }
+
+/* ---------- House-themed motion ---------- */
+.px-1 { transform: translate3d(calc((var(--mx) - 0.5) * -10px), calc((var(--my) - 0.5) * -6px), 0); }
+.px-2 { transform: translate3d(calc((var(--mx) - 0.5) * -22px), calc((var(--my) - 0.5) * -10px), 0); }
+.px-3 { transform: translate3d(calc((var(--mx) - 0.5) * -36px), calc((var(--my) - 0.5) * -14px), 0); }
+html[data-pointer="coarse"] .px-1, html[data-pointer="coarse"] .px-2, html[data-pointer="coarse"] .px-3, html[data-perf="lite"] .px-1, html[data-perf="lite"] .px-2, html[data-perf="lite"] .px-3 { transform: none; }
+
+.win { fill: rgb(255 255 255 / 0.09); transition: fill 0.4s; }
+.win.lit { fill: var(--color-ember-400); animation: light 0.9s ease-out both; animation-delay: calc(var(--i, 0) * 120ms); }
+html[data-perf="rich"] .win.lit { filter: drop-shadow(0 0 5px rgb(255 168 77 / 0.75)); }
+@keyframes light { from { fill: rgb(255 255 255 / 0.09); opacity: 0.35; } to { fill: var(--color-ember-400); opacity: 1; } }
+
+.draw path, .draw rect, .draw polyline { stroke-dasharray: 420; stroke-dashoffset: 420; animation: draw 1.6s ease forwards; }
+.draw.loop path, .draw.loop rect, .draw.loop polyline { animation: draw 2.2s ease-in-out infinite alternate; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+.swing { transform-origin: 50% 0; animation: swing 3.4s ease-in-out infinite; }
+@keyframes swing { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }

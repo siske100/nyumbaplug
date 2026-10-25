@@ -1,0 +1,89 @@
+# Local settings for the Supabase CLI. Hosted project: hostel-new (ref gzhyorqbpvpoevaeiuvz).
+# Link with:  supabase link --project-ref gzhyorqbpvpoevaeiuvz
+# Hosted projects keep their own copies of the auth settings below. Mirror them in the dashboard
+# (Authentication > Providers / Sign In / Email templates) and keep this file as the record.
+project_id = "hostel-new"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed/seed.sql"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+minimum_password_length = 10
+password_requirements = "letters_digits"
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "60s"
+otp_length = 6
+otp_expiry = 600
+
+[auth.email.template.confirmation]
+subject = "Your Rental Houses code"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[functions.phone-code-send]
+verify_jwt = true
+[functions.phone-code-verify]
+verify_jwt = true
+[functions.email-verified-sync]
+verify_jwt = true
+[functions.admin-send-reminder]
+verify_jwt = true
+[functions.daraja-stk]
+verify_jwt = true
+[functions.platform-pay]
+verify_jwt = true
+[functions.payments-connect]
+verify_jwt = true
+[functions.sms-broadcast]
+verify_jwt = true
+[functions.invite-create]
+verify_jwt = true
+# Called by Safaricom, visitors and the scheduler: they carry no sign-in, and each protects itself (secret address, codes, shared secret).
+[functions.daraja-stk-callback]
+verify_jwt = false
+[functions.daraja-c2b-validate]
+verify_jwt = false
+[functions.daraja-c2b-confirm]
+verify_jwt = false
+[functions.visit-code-send]
+verify_jwt = false
+[functions.visit-request]
+verify_jwt = false
+[functions.invite-lookup]
+verify_jwt = false
+[functions.invite-accept]
+verify_jwt = false
+[functions.cron]
+verify_jwt = false

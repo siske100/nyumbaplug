@@ -1,0 +1,22 @@
+{
+  "name": "rental-houses",
+  "private": true,
+  "version": "0.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/web",
+    "typecheck": "npm run typecheck -w apps/web",
+    "test:db": "node --test supabase/tests/*.test.mjs",
+    "test:shared": "node --test packages/shared/tests/*.test.mjs",
+    "test:functions": "cd supabase/functions && ../../node_modules/.bin/deno check */index.ts && ../../node_modules/.bin/deno test --allow-env --allow-net tests/",
+    "test": "npm run test:shared && npm run test:db && npm run test:functions"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "deno": "^2.9.6"
+  }
+}
