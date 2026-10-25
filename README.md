@@ -19,3 +19,4 @@ npm run build        # typecheck and production build
 Without Supabase settings the site runs on a development stand-in that only shows the public pages and sign-in. Everything else needs the real backend.
 
 **Start with `supabase/README.md`, then `docs/LAUNCH-CHECKLIST.md`.**
+# nyumbaplug
