@@ -49,7 +49,7 @@ const sections = [
   {
     title: "Third-party services and availability",
     content: <>
-      <p>The platform relies on third parties, including Supabase, Google, Render, Safaricom and Celcom. Their services are subject to their own terms and may be unavailable or change. We are not responsible for third-party systems beyond our reasonable control.</p>
+      <p>The platform relies on third parties. Their services are subject to their own terms and may be unavailable or change. We are not responsible for third-party systems beyond our reasonable control.</p>
       <p>We aim to keep the service available and secure, but do not promise uninterrupted or error-free operation. Features may be changed, paused or discontinued, with reasonable notice where practicable.</p>
     </>,
   },

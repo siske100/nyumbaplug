@@ -31,13 +31,7 @@ const sections = [
       <p>Information in private account areas is made available according to the person's role. For example, landlords can access information about their own properties and tenancies; tenants can access information about their own tenancy; and assigned caretakers receive limited operational access. Authorized administrators may access information needed for platform administration, verification, support and compliance.</p>
     </>,
   },
-  {
-    title: "Service providers and disclosures",
-    content: <>
-      <p>We use service providers to operate the platform. These include Supabase for database, authentication, file storage and server functions; Google when you choose Google authentication; Render for website hosting; Safaricom Daraja for M-Pesa payment processing; and Celcom for SMS delivery. These providers process information as needed to provide their services under their own terms and privacy practices.</p>
-      <p>We do not sell personal information. We may disclose information when necessary to provide a feature you request, protect users or the service, comply with law, or respond to valid legal process. Service providers may process information in locations outside Kenya; the precise location depends on the provider and service configuration.</p>
-    </>,
-  },
+
   {
     title: "Payments and messages",
     content: <>

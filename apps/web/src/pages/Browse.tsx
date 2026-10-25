@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { HouseScene } from "@/components/motion/HouseScene";
 import { ToLet } from "@/components/motion/Doodles";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -19,8 +18,15 @@ export default function Browse() {
 
   return (
     <div className="grid gap-8">
-      <Panel tone="hero" className="overflow-hidden p-6 sm:p-10">
-        <HouseScene vacant={(data ?? []).reduce((a, h) => a + h.vacant, 0)} className="pointer-events-none absolute -right-6 bottom-0 hidden w-[28rem] opacity-80 md:block" />
+      <Panel
+        tone="hero"
+        className="overflow-hidden p-6 pb-14 sm:p-10 sm:pb-14"
+        style={{
+          backgroundImage: "linear-gradient(90deg, rgb(13 13 15 / 0.94) 0%, rgb(13 13 15 / 0.78) 48%, rgb(13 13 15 / 0.48) 100%), linear-gradient(0deg, rgb(13 13 15 / 0.55), transparent 55%), url('/apartment-building.jpg')",
+          backgroundPosition: "center, center, center 56%",
+          backgroundSize: "cover",
+        }}
+      >
         <h1 className="relative max-w-2xl text-4xl leading-[1.1] sm:text-5xl">Vacant houses across Kenya, from verified landlords</h1>
         <p className="mt-3 max-w-xl text-graphite-200">Browse for free, get a suitable house, request viewing and move in.</p>
         <div className="mt-7 grid max-w-2xl gap-3 sm:grid-cols-[1fr_auto]">
@@ -33,6 +39,10 @@ export default function Browse() {
             {HOUSE_TYPES.map((t) => <Button key={t} variant={type === t ? "primary" : "glass"} size="sm" onClick={() => setType(t)}>{t}</Button>)}
           </div>
         </div>
+        <p className="absolute bottom-3 left-4 right-4 z-10 rounded-md bg-graphite-950/70 px-2 py-1 text-right text-[10px] text-graphite-200 sm:left-auto sm:max-w-[70%]">
+          Illustrative photo: “Kengen RBS Gardens - Serviced Apartments” by <a href="https://commons.wikimedia.org/wiki/File:Kengen_RBS_Gardens_-_Serviced_Apartments_-_panoramio.jpg" target="_blank" rel="noreferrer" className="underline underline-offset-2">Chetan Mahajan</a>
+          {" "}· resized, cropped and darkened · <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer" className="underline underline-offset-2">CC BY 3.0</a>
+        </p>
       </Panel>
 
       <section aria-live="polite" aria-busy={isPending || isPlaceholderData}>
