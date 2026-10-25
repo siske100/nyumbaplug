@@ -67,6 +67,9 @@ export default function SignUp() {
               {failure instanceof ApiError && <p role="alert" className="text-sm text-danger">{failure.message}</p>}
               <Button type="submit" loading={create.isPending}>Create account</Button>
             </form>
+            <p className="mt-4 text-xs text-graphite-400">
+              By continuing with Google or creating an account, you agree to the <Link to="/terms" className="underline underline-offset-4 hover:text-bone">Terms of Service</Link> and acknowledge the <Link to="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</Link>.
+            </p>
             <p className="mt-5 text-sm text-graphite-300">Already registered? <Link to="/sign-in" className="text-ember-300 underline-offset-4 hover:underline">Sign in</Link></p>
           </>
         ) : (

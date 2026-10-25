@@ -8,7 +8,9 @@ import { NoticesView } from "@/components/shared/NoticesView";
 import { Notice } from "@/components/ui/Notice";
 import { RequireRole } from "@/features/auth/guards";
 import Browse from "@/pages/Browse";
+import Privacy from "@/pages/Privacy";
 import SignIn from "@/pages/SignIn";
+import Terms from "@/pages/Terms";
 
 // Each area loads only when it is opened, so a visitor browsing houses never downloads the dashboards.
 const SignUp = lazy(() => import("@/pages/SignUp"));
@@ -37,6 +39,8 @@ export default function App() {
         <Route element={<PublicLayout />}>
           <Route index element={<Browse />} />
           <Route path="house/:id" element={<House />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="terms" element={<Terms />} />
         </Route>
         <Route path="/invite/:token" element={<InviteAccept />} />
         <Route path="/sign-in" element={<SignIn />} />

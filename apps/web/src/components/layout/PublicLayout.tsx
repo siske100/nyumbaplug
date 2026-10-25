@@ -19,6 +19,13 @@ export function PublicLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-3 pb-16 pt-6 sm:px-6"><Outlet /></main>
+      <footer className="mx-auto flex max-w-6xl flex-wrap justify-between gap-3 px-3 pb-8 text-sm text-graphite-400 sm:px-6">
+        <span>Rental Houses Kenya</span>
+        <nav aria-label="Legal" className="flex gap-4">
+          <Link to="/privacy" className="hover:text-bone">Privacy policy</Link>
+          <Link to="/terms" className="hover:text-bone">Terms of service</Link>
+        </nav>
+      </footer>
     </>
   );
 }

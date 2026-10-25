@@ -67,6 +67,9 @@ export default function SignIn() {
         </form>
 
         <p className="mt-5 text-sm text-graphite-300">New landlord? <Link to="/sign-up" className="text-ember-300 underline-offset-4 hover:underline">Create an account</Link>. Tenant or caretaker? Use the invite link your landlord sent you.</p>
+        <p className="mt-4 text-xs text-graphite-400">
+          By continuing with Google or signing in, you acknowledge the <Link to="/privacy" className="underline underline-offset-4 hover:text-bone">Privacy Policy</Link> and agree to the <Link to="/terms" className="underline underline-offset-4 hover:text-bone">Terms of Service</Link>.
+        </p>
 
         {import.meta.env.DEV && api.devSignIn && (
           <div className="mt-6 rounded-xl border border-dashed border-white/15 p-3">
