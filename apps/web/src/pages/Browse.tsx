@@ -90,6 +90,46 @@ export default function Browse() {
           </>
         )}
       </section>
+
+      <section aria-labelledby="about-rental-houses" className="grid gap-4">
+        <Panel className="grid gap-3 p-5 sm:p-7">
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-ember-300">About the service</p>
+          <h2 id="about-rental-houses" className="text-3xl">Rental Houses Kenya</h2>
+          <p className="max-w-3xl leading-7 text-graphite-200">
+            A rental discovery and property-management platform operated by Referraliq Solutions. People can browse vacant rental listings across Kenya without signing in, compare rent and property details, and request a viewing. Landlords can publish available houses and manage viewing requests, tenants, rent records, notices and tenant SMS. Invited tenants and caretakers can use their account areas to manage tenancy-related tasks.
+          </p>
+        </Panel>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Panel className="grid content-start gap-2 p-5">
+            <h3 className="text-xl">For house hunters</h3>
+            <p className="text-sm leading-6 text-graphite-300">Browse by county and house type, review rent, amenities and vacancy information, then request a viewing. A phone number is verified by SMS to reduce false requests and let the landlord follow up about the viewing.</p>
+          </Panel>
+          <Panel className="grid content-start gap-2 p-5">
+            <h3 className="text-xl">For landlords</h3>
+            <p className="text-sm leading-6 text-graphite-300">Create a landlord account, submit details for review, publish available houses, manage tenants and payment records, and choose whether rent goes to the platform Paybill or your own connected Paybill. Google sign-in uses basic Google account information to create or access your landlord account; it does not access Gmail, Drive or contacts.</p>
+            <Link to="/sign-up" className="mt-1 text-sm text-ember-300 underline-offset-4 hover:underline">Create a landlord account</Link>
+          </Panel>
+          <Panel className="grid content-start gap-2 p-5">
+            <h3 className="text-xl">For tenants and caretakers</h3>
+            <p className="text-sm leading-6 text-graphite-300">Landlords invite tenants and caretakers. Depending on the role, invited users can access tenancy information, rent payments, documents, notices, complaints or assigned property tasks.</p>
+          </Panel>
+        </div>
+
+        <Panel className="grid gap-3 p-5 sm:p-7">
+          <h2 className="text-2xl">Why we ask for information</h2>
+          <ul className="grid gap-2 text-sm leading-6 text-graphite-300">
+            <li><strong className="text-bone">Sign-in details:</strong> your name and email identify your account; passwords or Google sign-in authenticate it. Google provides basic profile information for sign-in only.</li>
+            <li><strong className="text-bone">Phone number:</strong> used for requested viewing verification, account messages, and landlord M-Pesa prompts or SMS features, as relevant to your role.</li>
+            <li><strong className="text-bone">Landlord identity and KRA documents:</strong> collected to review landlord eligibility and help protect rental listings from fraudulent accounts.</li>
+            <li><strong className="text-bone">Viewing request details:</strong> your name, verified phone number, selected house and preferred time are shared with the relevant landlord so they can respond and arrange the viewing.</li>
+            <li><strong className="text-bone">Payment and message records:</strong> used to confirm and reconcile M-Pesa transactions, maintain rent records, send requested SMS and track delivery. We do not ask for or store your M-Pesa PIN.</li>
+          </ul>
+          <p className="text-sm leading-6 text-graphite-300">
+            We do not sell personal information. Access to private account information is limited by role. Read the <Link to="/privacy" className="text-ember-300 underline underline-offset-4 hover:text-bone">Privacy Policy</Link> for details about collection, use, service providers, retention and privacy requests, or contact <a href="mailto:siskemejja@gmail.com" className="text-ember-300 underline underline-offset-4 hover:text-bone">siskemejja@gmail.com</a>.
+          </p>
+        </Panel>
+      </section>
     </div>
   );
 }
