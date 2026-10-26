@@ -58,7 +58,7 @@ const sections = [
   {
     title: "Public information and access controls",
     content: <>
-      <p>Vacant listings are public and may show the property title, county, town or area, house type, rent, deposit, amenities, availability and listing photos. The public listing is designed not to show the landlord's phone number, email address or exact property spot. A person who requests a viewing gives their name, phone number, selected property, date and time preference to the platform and the relevant landlord so they can respond.</p>
+      <p>Vacant listings are public and may show the property title, county, town or area, house type, rent, deposit, amenities, availability and listing photos. The public listing is designed not to show the landlord's phone number, email address or exact property spot. A person who requests a viewing gives their name, phone number, selected property, date and time preference to the platform and the relevant landlord so they can respond. The phone number is not verified with a code.</p>
       <p>Private account information is restricted according to account role and database access rules. Landlords can access their own property and tenancy information; tenants can access information relating to their own tenancy; caretakers have limited information for assigned properties; and administrators have access appropriate to their duties. Identity and KRA files are stored in private storage and are available only to authorized reviewers and the submitting landlord.</p>
     </>,
   },

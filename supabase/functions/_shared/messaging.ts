@@ -1,5 +1,4 @@
 // SMS operations: landlord-paid messages, broadcasts, rent reminders, and the visitor and invite messages.
-import { generateCode, hashCode, isSixDigits } from "./codes.ts";
 import { fromDb, HttpError, type Rpc } from "./ops.ts";
 import type { SmsProvider } from "./sms.ts";
 import { toInternational } from "./sms.ts";
@@ -89,34 +88,15 @@ export async function runReminders(d: SmsDeps, isoDate: string) {
   return out;
 }
 
-// ---- Visitors (no account): a verified phone before a viewing request reaches anyone ----
-export async function sendVisitorCode(d: SmsDeps, i: { phone: unknown; ipHash: string; pepper: string; makeCode?: () => string }) {
-  if (typeof i.phone !== "string" || !PHONE.test(i.phone)) throw new HttpError(400, "Enter a valid Kenyan phone number");
-  const code = (i.makeCode ?? generateCode)();
-  const issued = await d.rpc("issue_visitor_code", { p_phone: i.phone, p_code_hash: await hashCode(code, i.phone, i.pepper), p_ip_hash: i.ipHash });
-  if (issued.error) throw fromDb(issued.error);
-  try {
-    await d.sms.send(toInternational(i.phone), `Your Rental Houses code is ${code}. It expires in 5 minutes. Do not share it.`);
-    await d.rpc("celcom_record_usage", { p_segments: 1, p_purpose: "visitor_code" }).then(undefined, () => {});
-  } catch (e) {
-    console.error("visitor sms failed", e instanceof Error ? e.message : e);
-    await d.rpc("cancel_visitor_code", { p_phone: i.phone });
-    throw new HttpError(502, "We could not send the SMS. Please try again.");
-  }
-  return { expiresAt: issued.data };
-}
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export async function submitVisitRequest(d: { rpc: Rpc; pepper: string }, b: Record<string, unknown>) {
+export async function submitVisitRequest(d: { rpc: Rpc; ipHash: string }, b: Record<string, unknown>) {
   const name = typeof b.name === "string" ? b.name.trim() : "";
   if (typeof b.houseId !== "string" || !UUID.test(b.houseId)) throw new HttpError(400, "Choose a house");
   if (name.length < 2 || name.length > 120) throw new HttpError(400, "Enter your name");
   if (typeof b.phone !== "string" || !PHONE.test(b.phone)) throw new HttpError(400, "Enter a valid Kenyan phone number");
   if (typeof b.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) throw new HttpError(400, "Pick a date");
   if (!["Morning", "Afternoon", "Evening"].includes(String(b.window))) throw new HttpError(400, "Pick a time of day");
-  if (!isSixDigits(b.code)) throw new HttpError(400, "Enter the 6-digit code");
-  const r = await d.rpc("submit_visit_request", { p_house: b.houseId, p_name: name, p_phone: b.phone, p_date: b.date, p_window: b.window, p_code_hash: await hashCode(b.code, b.phone, d.pepper) });
+  const r = await d.rpc("create_public_visit_request", { p_house: b.houseId, p_name: name, p_phone: b.phone, p_date: b.date, p_window: b.window, p_ip_hash: d.ipHash });
   if (r.error) throw fromDb(r.error);
-  if (r.data === null) throw new HttpError(400, "That code is not right");
   return { ok: true };
 }

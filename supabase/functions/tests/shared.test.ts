@@ -52,6 +52,14 @@ Deno.test("daraja client: token is cached, a push returns Safaricom's ids, and f
   const refused = createDaraja("sandbox", (async () => new Response(JSON.stringify({ ResponseCode: "1", ResponseDescription: "bad" }))) as unknown as typeof fetch);
   let err: unknown; try { await refused.token({ consumerKey: "k", consumerSecret: "s" }); } catch (e) { err = e; }
   nodeAssert.ok(err instanceof DarajaError); nodeAssert.ok(!String((err as Error).message).includes("secret"));
+  const rejected = createDaraja("sandbox", (async (url: string | URL | Request) =>
+    String(url).includes("/oauth/")
+      ? new Response(JSON.stringify({ access_token: "T1", expires_in: "3599" }))
+      : new Response(JSON.stringify({ requestId: "req-1", errorCode: "BadRequest", errorMessage: "invalid request", consumerSecret: "do-not-log" }), { status: 400 })) as typeof fetch);
+  let rejection: unknown;
+  try { await rejected.stkPush(creds, { amount: 100, msisdn: "254712345678", accountRef: "A", description: "R", callbackUrl: "https://f/x" }); } catch (e) { rejection = e; }
+  nodeAssert.ok(rejection instanceof DarajaError);
+  eq(rejection.providerDetails, { requestId: "req-1", errorCode: "BadRequest", errorMessage: "invalid request" });
 });
 
 Deno.test("vault: round trip, tamper detection, wrong key and wrong landlord all fail", async () => {

@@ -99,9 +99,13 @@ const call = (method: string, init: RequestInit = {}, fn: () => Promise<unknown>
   handle(fn)(new Request("https://f.example/x", { method, ...init }));
 
 Deno.test("web plumbing: preflight, methods and cross-site access", async () => {
-  const pre = await call("OPTIONS", { headers: { Origin: "https://app.example.ke" } });
+  const pre = await call("OPTIONS", { headers: {
+    Origin: "https://app.example.ke",
+    "Access-Control-Request-Headers": "authorization, apikey, content-type, x-client-info",
+  } });
   assertEquals(pre.status, 204);
   assertEquals(pre.headers.get("Access-Control-Allow-Origin"), "https://app.example.ke");
+  assert((pre.headers.get("Access-Control-Allow-Headers") ?? "").split(", ").includes("x-client-info"));
   const evil = await call("OPTIONS", { headers: { Origin: "https://evil.example" } });
   assertEquals(evil.headers.get("Access-Control-Allow-Origin"), null);
   assertEquals((await call("GET")).status, 405);

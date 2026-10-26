@@ -3,7 +3,7 @@
 Project **hostel-new**, ref `gzhyorqbpvpoevaeiuvz`.
 
 Migrations, in order: `0001_core`, `0002_money`, `0003_access`, `0004_signup`, `0005_jobs`, `0006_onboarding`, `0007_storage`,
-`0008_admin`, `0009_features`, `0010_payment_plumbing`, `0011_caretakers_view`, `0012_landlord_email_verification`. Then `seed/seed.sql`, then `cron.sql`.
+`0008_admin`, `0009_features`, `0010_payment_plumbing`, `0011_caretakers_view`, `0012_landlord_email_verification`, `0013_public_viewing_requests`. Then `seed/seed.sql`, then `cron.sql`.
 
 ## Set up, in this order
 1. **Link and apply the database**
@@ -58,7 +58,7 @@ Sign in at `/sign-in`. The first time, you set up an authenticator app. After th
 1. Sign up as a landlord and confirm the email code. Landlords add a phone number for M-Pesa prompts but do not verify it with an SMS code.
 2. Upload an ID and KRA PIN. In `/admin`, approve it. The landlord now sees "pay your first month".
 3. Pay with the Daraja sandbox (the sandbox accepts a test phone number). Landlord becomes active.
-4. Post a house with 3 photos. Open it on the public site. Request a viewing as a visitor (phone code), then schedule it in `/admin`.
+4. Post a house with 3 photos. Open it on the public site. Request a viewing as a visitor (no phone code required), then contact the visitor and schedule it in `/admin`.
 5. Add a tenant, send the invite, open the link, create the tenant login, confirm the phone, pay rent with the prompt.
 6. Watch the ledger, the payment text, the reminders (run the `cron` function by hand with task `reminders`) and the admin pages.
 

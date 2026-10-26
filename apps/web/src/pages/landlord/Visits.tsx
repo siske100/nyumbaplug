@@ -19,7 +19,7 @@ export default function Visits() {
 
   return (
     <div className="grid gap-4">
-      <PageHead title="Viewings" sub="Our team arranges viewings with visitors. You see each one once it is scheduled for your house. If a slot is full, reschedule it and the visitor is told automatically." />
+      <PageHead title="Viewings" sub="Contact visitors directly on WhatsApp to arrange a time. Their selected day and time are preferences; you can reschedule arranged viewings up to twice." />
       <ErrorNote error={error ?? resched.error} />
       {isPending && <div className="skeleton h-24" />}
       {data?.length === 0 && <Panel className="p-4"><ToLet title="No viewings scheduled" note="They appear here once our team has arranged a time with a visitor." /></Panel>}

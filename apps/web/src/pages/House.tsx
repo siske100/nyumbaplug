@@ -8,13 +8,11 @@ import { HouseLoader, PayCelebration } from "@/components/motion/Doodles";
 import { Windows } from "@/components/motion/HouseScene";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { CodeField } from "@/components/ui/CodeField";
 import { Field, SelectField } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
 import { formatKes } from "@/lib/format";
-import { useCooldown } from "@/lib/useCooldown";
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 /** Today and the next six days: always inside the server's seven-day rule, whatever the time zone. */
@@ -22,48 +20,35 @@ const dateOptions = () => Array.from({ length: 7 }, (_, i) => { const d = new Da
 
 function ViewingRequest({ houseId }: { houseId: string }) {
   const dates = useMemo(dateOptions, []);
-  const [f, setF] = useState({ name: "", phone: "", date: dates[0]!.value, window: "Morning", code: "" });
+  const [f, setF] = useState({ name: "", phone: "", date: dates[0]!.value, window: "Morning" });
   const [errs, setErrs] = useState<Record<string, string>>({});
-  const [step, setStep] = useState<"form" | "code" | "done">("form");
-  const cooldown = useCooldown();
+  const [done, setDone] = useState(false);
 
-  const send = useMutation({ mutationFn: () => api.site.sendVisitCode(f.phone), onSuccess: () => { setStep("code"); cooldown.start(60); } });
-  const submit = useMutation({ mutationFn: () => api.site.requestVisit({ houseId, ...f }), onSuccess: () => setStep("done") });
+  const submit = useMutation({ mutationFn: (input: Parameters<typeof api.site.requestVisit>[0]) => api.site.requestVisit(input), onSuccess: () => setDone(true) });
 
   const start = () => {
     const r = viewingRequestSchema.safeParse(f);
     if (!r.success) { const e: Record<string, string> = {}; for (const i of r.error.issues) e[String(i.path[0])] ??= i.message; setErrs(e); return; }
     setErrs({});
     setF({ ...f, phone: r.data.phone });
-    send.mutate();
+    submit.mutate({ houseId, ...r.data });
   };
 
-  if (step === "done") return <Panel className="p-6"><PayCelebration message="Request sent" /><p className="text-center text-graphite-300">We will contact you on WhatsApp at {f.phone} to confirm the time. Keep your phone on.</p></Panel>;
+  if (done) return <Panel className="p-6"><PayCelebration message="Request sent" /><p className="text-center text-graphite-300">The landlord will contact you on WhatsApp at {f.phone} to arrange the viewing. Keep your phone on.</p></Panel>;
   return (
     <Panel tone="hero" className="grid gap-4 p-6">
       <h2 className="text-2xl">Request a viewing</h2>
-      {step === "form" ? (
-        <>
-          <p className="text-graphite-300">Pick a day this week. We will text a code to confirm your number, then contact you on WhatsApp.</p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Your name" autoComplete="name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} error={errs.name} />
-            <Field label="WhatsApp number" type="tel" inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} error={errs.phone} />
-            <SelectField label="Day" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} error={errs.date}>{dates.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</SelectField>
-            <SelectField label="Time of day" value={f.window} onChange={(e) => setF({ ...f, window: e.target.value })}>{["Morning", "Afternoon", "Evening"].map((w) => <option key={w}>{w}</option>)}</SelectField>
-          </div>
-          <ErrorNote error={send.error} />
-          <Button magnetic loading={send.isPending} onClick={start}>Send me a code</Button>
-        </>
-      ) : (
-        <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); if (f.code.length === 6) submit.mutate(); }}>
-          <p className="text-graphite-300">We texted a 6-digit code to {f.phone}. It expires in 5 minutes.</p>
-          <CodeField label="Code from the SMS" value={f.code} onChange={(v) => setF({ ...f, code: v })} />
-          <ErrorNote error={submit.error} />
-          <Button type="submit" magnetic loading={submit.isPending} disabled={f.code.length !== 6}>Send my request</Button>
-          <Button variant="ghost" disabled={cooldown.left > 0 || send.isPending} onClick={() => send.mutate()}>{cooldown.left > 0 ? `Send again in ${cooldown.left}s` : "Send a new code"}</Button>
-          <Button variant="ghost" onClick={() => setStep("form")}>Change my details</Button>
-        </form>
-      )}
+      <p className="text-graphite-300">Enter your details and preferred day and time. No verification code is needed; the landlord will contact you on WhatsApp to arrange the viewing.</p>
+      <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); start(); }} noValidate>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Your name" autoComplete="name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} error={errs.name} />
+          <Field label="WhatsApp number" type="tel" inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} error={errs.phone} />
+          <SelectField label="Preferred day" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} error={errs.date}>{dates.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}</SelectField>
+          <SelectField label="Preferred time" value={f.window} onChange={(e) => setF({ ...f, window: e.target.value })}>{["Morning", "Afternoon", "Evening"].map((w) => <option key={w}>{w}</option>)}</SelectField>
+        </div>
+        <ErrorNote error={submit.error} />
+        <Button type="submit" magnetic loading={submit.isPending}>Send viewing request</Button>
+      </form>
     </Panel>
   );
 }

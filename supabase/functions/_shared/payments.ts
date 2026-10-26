@@ -1,5 +1,5 @@
 // M-Pesa operations: tenants paying rent, landlords buying subscription or SMS credit, Safaricom's callbacks, and connecting a Paybill.
-import { type Daraja, type DarajaCreds, parseC2b, parseStkCallback, toMsisdn, wholeShillings } from "./daraja.ts";
+import { DarajaError, type Daraja, type DarajaCreds, parseC2b, parseStkCallback, toMsisdn, wholeShillings } from "./daraja.ts";
 import { fromDb, HttpError, type Rpc } from "./ops.ts";
 import { safeEqual } from "./text.ts";
 
@@ -36,7 +36,11 @@ async function sendPrompt(d: PayDeps, kind: "tenant" | "platform", attemptId: st
     const push = await d.daraja.stkPush(creds, { amount: r.amount, msisdn: toMsisdn(r.phone), accountRef: r.accountRef, description: r.description, callbackUrl: callbackUrl(d.env, "daraja-stk-callback", token) });
     await d.rpc(kind === "tenant" ? "bind_payment_attempt" : "bind_platform_attempt", { p_attempt: attemptId, p_checkout: push.checkoutRequestId, p_merchant: push.merchantRequestId });
   } catch (e) {
-    console.error("prompt failed", e instanceof Error ? e.message : e);
+    if (e instanceof DarajaError && Object.keys(e.providerDetails ?? {}).length > 0) {
+      console.error("prompt failed", e.message, e.providerDetails);
+    } else {
+      console.error("prompt failed", e instanceof Error ? e.message : e);
+    }
     await d.rpc("fail_attempt_by_id", { p_kind: kind, p_attempt: attemptId, p_desc: "prompt could not be sent" });
     throw new HttpError(502, "We could not send the M-Pesa prompt. Please try again.");
   }

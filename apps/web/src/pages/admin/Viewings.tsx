@@ -69,7 +69,7 @@ export default function Viewings() {
   const { data, isPending, error } = useAdminViewings();
   return (
     <div className="grid gap-4">
-      <PageHead title="Viewing requests" sub="Visitors verify their phone number before a request reaches you. Contact them, schedule, and record how it went." />
+      <PageHead title="Viewing requests" sub="Visitors send their contact details and preferred time. Contact them, schedule, and record how it went." />
       <ErrorNote error={error} />
       {isPending && <div className="skeleton h-32" />}
       <Panel className="divide-y divide-white/8">

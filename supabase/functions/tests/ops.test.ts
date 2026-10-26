@@ -1,11 +1,10 @@
 import nodeAssert from "node:assert/strict";
 import type { Daraja, DarajaCreds } from "../_shared/daraja.ts";
 import { acceptInvite, createInvite, lookupInvite } from "../_shared/invites.ts";
-import { broadcast, notifyPaid, reminderSms, runReminders, sendLandlordSms, sendVisitorCode, submitVisitRequest } from "../_shared/messaging.ts";
+import { broadcast, notifyPaid, reminderSms, runReminders, sendLandlordSms, submitVisitRequest } from "../_shared/messaging.ts";
 import { runCron } from "../_shared/cron.ts";
 import { HttpError, type Rpc } from "../_shared/ops.ts";
 import { c2bConfirm, c2bValidate, connectDaraja, handleStkCallback, platformPay, reconcilePending, tenantPay, type ConnectDeps } from "../_shared/payments.ts";
-import { hashCode } from "../_shared/codes.ts";
 
 const eq = (a: unknown, b: unknown) => nodeAssert.deepStrictEqual(a, b);
 const ok = (c: unknown, m?: string) => nodeAssert.ok(c, m);
@@ -286,28 +285,16 @@ Deno.test("reminders: sent once each, marked only when delivered, and always one
 });
 
 // ---------------- visitors ----------------
-Deno.test("visitor code: valid phones only, the code is hashed, a failed SMS cancels it", async () => {
-  const s = sms(); const f = fake({ issue_visitor_code: () => ({ data: "2026-10-16T10:05:00Z" }) });
-  await rejectsWith(() => sendVisitorCode({ rpc: f.rpc, sms: s.provider }, { phone: "12345", ipHash: "h", pepper: "p" }), 400);
-  await rejectsWith(() => sendVisitorCode({ rpc: f.rpc, sms: s.provider }, { phone: 712345678, ipHash: "h", pepper: "p" }), 400);
-  const out = await sendVisitorCode({ rpc: f.rpc, sms: s.provider }, { phone: "0712345678", ipHash: "iphash", pepper: "p", makeCode: () => "482913" });
-  eq(out.expiresAt, "2026-10-16T10:05:00Z"); ok(s.sent[0]!.text.includes("482913"));
-  eq(f.last("issue_visitor_code")!.p_code_hash, await hashCode("482913", "0712345678", "p")); ok(!JSON.stringify(f.calls).includes("482913"));
-  eq(f.last("issue_visitor_code")!.p_ip_hash, "iphash");
-  const restore = quiet();
-  await rejectsWith(() => sendVisitorCode({ rpc: f.rpc, sms: sms(true).provider }, { phone: "0712345678", ipHash: "h", pepper: "p" }), 502);
-  restore(); ok(f.names().includes("cancel_visitor_code"));
-});
-
-Deno.test("visit request: every field is checked, a wrong code is refused, the database's own messages are passed on", async () => {
-  const good = { houseId: "123e4567-e89b-12d3-a456-426614174000", name: "Faith Njeri", phone: "0711222333", date: "2026-10-17", window: "Morning", code: "123456" };
-  const f = fake({ submit_visit_request: () => ({ data: "req-1" }) });
-  eq(await submitVisitRequest({ rpc: f.rpc, pepper: "p" }, good), { ok: true });
-  eq(f.last("submit_visit_request")!.p_code_hash, await hashCode("123456", "0711222333", "p"));
-  for (const patch of [{ houseId: "nope" }, { name: "F" }, { phone: "123" }, { date: "tomorrow" }, { window: "Midnight" }, { code: "12345" }])
-    await rejectsWith(() => submitVisitRequest({ rpc: f.rpc, pepper: "p" }, { ...good, ...patch }), 400);
-  await rejectsWith(() => submitVisitRequest({ rpc: fake({ submit_visit_request: () => ({ data: null }) }).rpc, pepper: "p" }, good), 400, /code is not right/);
-  await rejectsWith(() => submitVisitRequest({ rpc: fake({ submit_visit_request: () => ({ error: { code: "P0001", message: "Viewing requests are full for this house" } }) }).rpc, pepper: "p" }, good), 400, /full for this house/);
+Deno.test("viewing request: valid contact details and preferences are submitted without a phone code", async () => {
+  const good = { houseId: "123e4567-e89b-12d3-a456-426614174000", name: "Faith Njeri", phone: "0711222333", date: "2026-10-17", window: "Morning" };
+  const ipHash = "a".repeat(64);
+  const f = fake({ create_public_visit_request: () => ({ data: "req-1" }) });
+  eq(await submitVisitRequest({ rpc: f.rpc, ipHash }, good), { ok: true });
+  eq(f.last("create_public_visit_request")!.p_ip_hash, ipHash);
+  eq(f.last("create_public_visit_request")!.p_phone, good.phone);
+  for (const patch of [{ houseId: "nope" }, { name: "F" }, { phone: "123" }, { date: "tomorrow" }, { window: "Midnight" }])
+    await rejectsWith(() => submitVisitRequest({ rpc: f.rpc, ipHash }, { ...good, ...patch }), 400);
+  await rejectsWith(() => submitVisitRequest({ rpc: fake({ create_public_visit_request: () => ({ error: { code: "P0001", message: "Viewing requests are full for this house" } }) }).rpc, ipHash }, good), 400, /full for this house/);
 });
 
 // ---------------- invites ----------------

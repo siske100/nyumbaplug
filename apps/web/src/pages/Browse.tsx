@@ -123,7 +123,7 @@ export default function Browse() {
             <li><strong className="text-bone">Sign-in details:</strong> your name and email identify your account; passwords or Google sign-in authenticate it. Google provides basic profile information for sign-in only.</li>
             <li><strong className="text-bone">Phone number:</strong> used for requested viewing verification, account messages, and landlord M-Pesa prompts or SMS features, as relevant to your role.</li>
             <li><strong className="text-bone">Landlord identity and KRA documents:</strong> collected to review landlord eligibility and help protect rental listings from fraudulent accounts.</li>
-            <li><strong className="text-bone">Viewing request details:</strong> your name, verified phone number, selected house and preferred time are shared with the relevant landlord so they can respond and arrange the viewing.</li>
+            <li><strong className="text-bone">Viewing request details:</strong> your name, phone number, selected house and preferred time are shared with the relevant landlord so they can contact you and arrange the viewing. Your number is not verified with a code.</li>
             <li><strong className="text-bone">Payment and message records:</strong> used to confirm and reconcile M-Pesa transactions, maintain rent records, send requested SMS and track delivery. We do not ask for or store your M-Pesa PIN.</li>
           </ul>
           <p className="text-sm leading-6 text-graphite-300">

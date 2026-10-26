@@ -203,10 +203,9 @@ export interface TenantApi {
 
 export interface HouseDetail extends PublicListing { rules: string | null; electricityNote: string | null; photos: string[] }
 export interface InviteInfo { kind: "tenant" | "caretaker"; landlordName: string | null; inviteeName: string | null; houseTitle: string; unit: string | null; phoneHint: string }
-export interface VisitRequestInput { houseId: string; name: string; phone: string; date: string; window: string; code: string }
+export interface VisitRequestInput { houseId: string; name: string; phone: string; date: string; window: string }
 export interface SiteApi {
   house(id: string): Promise<HouseDetail | null>;
-  sendVisitCode(phone: string): Promise<void>;
   requestVisit(input: VisitRequestInput): Promise<void>;
   inviteInfo(token: string): Promise<InviteInfo>;
   acceptInvite(token: string, email: string, password: string): Promise<void>;

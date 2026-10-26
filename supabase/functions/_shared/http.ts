@@ -13,7 +13,7 @@ function corsHeaders(req: Request): Record<string, string> {
   const h: Record<string, string> = { "Vary": "Origin", "Content-Type": "application/json", "Cache-Control": "no-store" };
   if (allowed && origin === allowed) {
     h["Access-Control-Allow-Origin"] = origin;
-    h["Access-Control-Allow-Headers"] = "authorization, content-type, apikey";
+    h["Access-Control-Allow-Headers"] = "authorization, content-type, apikey, x-client-info";
     h["Access-Control-Allow-Methods"] = "POST, OPTIONS";
   }
   return h;

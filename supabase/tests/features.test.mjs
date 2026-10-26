@@ -74,50 +74,31 @@ describe("invites", () => {
   });
 });
 
-describe("visitor phone codes", () => {
+describe("public viewing requests", () => {
   let db, w;
-  const issue = (phone, hash = "vh", ip = "ip-1") => as(db, server, "select issue_visitor_code($1,$2,$3) e", [phone, hash, ip]);
-  const submit = (hash, date = "current_date + 1", phone = "0711888001", house = null) =>
-    as(db, server, `select submit_visit_request($1,'Faith Njeri',$2,${date},'Morning',$3) id`, [house ?? w.hA, phone, hash]);
-  const rewind = (secs) => sql(db, "update visitor_codes set created_at = created_at - ($1 || ' seconds')::interval, expires_at = expires_at - ($1 || ' seconds')::interval", [String(secs)]);
+  const submit = (phone, ip = "a".repeat(64), date = "current_date + 1", house = null) =>
+    as(db, server, `select create_public_visit_request($1,'Faith Njeri',$2,${date},'Morning',$3) id`, [house ?? w.hA, phone, ip]);
   before(async () => { db = await freshDb(); w = await buildWorld(db); });
 
-  it("a code is needed before a request is created, and creating one uses the code up", async () => {
-    await rejects(submit("any"), /No active code/);
-    await issue("0711888001", "right");
-    const [{ id }] = await submit("right");
+  it("creates a viewing request directly with a phone number and preferred time", async () => {
+    const [{ id }] = await submit("0711888001");
     assert.ok(id);
     assert.equal((await one(db, "select visitor_phone p from visit_requests where id=$1", [id])).p, "0711888001");
-    await rejects(submit("right"), /No active code/);
   });
-  it("a wrong code returns nothing, five wrong tries burn the code", async () => {
-    await rewind(3601); await issue("0711888001", "right2");
-    for (let i = 0; i < 5; i++) assert.equal((await submit("wrong" + i))[0].id, null);
-    await rejects(submit("right2"), /No active code/);
+  it("keeps date, phone, and open-request checks in place", async () => {
+    await rejects(submit("0711888002", "b".repeat(64), "current_date + 9"), /within the next 7 days/);
+    await rejects(submit("12345"), /valid Kenyan phone number/);
+    await submit("0711888003", "b".repeat(64));
+    await submit("0711888003", "b".repeat(64));
+    await submit("0711888003", "b".repeat(64));
+    await rejects(submit("0711888003", "b".repeat(64), "current_date + 1", w.hB), /Too many open requests for this number/);
   });
-  it("a refused request does not use up the code", async () => {
-    await rewind(3601); await issue("0711888001", "right3");
-    await rejects(submit("right3", "current_date + 9"), /within the next 7 days/);
-    assert.ok((await submit("right3"))[0].id);
-  });
-  it("limits: one a minute, five an hour per phone, ten an hour per connection, valid numbers only", async () => {
-    await rewind(3601);
-    await issue("0711999001"); await rejects(issue("0711999001"), /Wait a minute/);
-    for (let i = 0; i < 4; i++) { await rewind(61); await issue("0711999001"); }
-    await rewind(61);
-    await rejects(issue("0711999001"), /Too many codes for this number/);
-    await rejects(issue("12345"), /valid Kenyan phone/);
-    await rewind(3601);
-    for (let i = 0; i < 10; i++) await issue("07119991" + String(i).padStart(2, "0"), "h", "ip-busy");
-    await rejects(issue("0711999299", "h", "ip-busy"), /Too many requests from your connection/);
-    await issue("0711999299", "h", "ip-other");
-  });
-  it("a cancelled code (SMS failed) cannot be used, and browsers cannot touch the table", async () => {
-    await rewind(3601); await issue("0711888055", "cc");
-    await as(db, server, "select cancel_visitor_code('0711888055')");
-    await rejects(submit("cc", "current_date + 1", "0711888055"), /No active code/);
-    await rejects(as(db, anon, "select * from visitor_codes"), /permission denied/);
-    await rejects(as(db, anon, "select submit_visit_request($1,'A B','0711000000',current_date,'Morning','x')", [w.hA]), /permission denied/);
+  it("limits accepted requests per network address and keeps limit data private", async () => {
+    const ip = "c".repeat(64);
+    await sql(db, "insert into visitor_request_ip_limits(ip_hash) select $1 from generate_series(1,10)", [ip]);
+    await rejects(submit("0711888004", ip), /Too many viewing requests from your connection/);
+    await rejects(as(db, anon, "select * from visitor_request_ip_limits"), /permission denied/);
+    await rejects(as(db, anon, "select create_public_visit_request($1,'A B','0711000000',current_date,'Morning',$2)", [w.hA, "d".repeat(64)]), /permission denied/);
   });
 });
 

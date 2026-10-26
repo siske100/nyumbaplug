@@ -37,7 +37,7 @@
 ## Known trade-offs
 - The signed-in session token sits in the browser's local storage (the library default). The strict content policy is the defence. A cookie-based session needs a server in front.
 - Google sign-in on any page creates a landlord account with no access until verification and payment.
-- Public endpoints (visitor codes, invites) rely on per-phone and per-network limits in the database. Add bot protection (for example Cloudflare Turnstile) before heavy traffic.
+- Public endpoints (viewing requests and invites) rely on open-request, per-house and per-network limits in the database. Viewing-request phone numbers are not OTP-verified. Add bot protection (for example Cloudflare Turnstile) before heavy traffic.
 - An attacker who can request codes for many different phone numbers costs you KES 0.25 each. The per-network limit is the brake.
 - `landlord_active(uuid)` tells a signed-in user whether a given landlord id is active. Ids are unguessable.
 

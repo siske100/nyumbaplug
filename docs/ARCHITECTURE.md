@@ -9,7 +9,7 @@
 - **Landlord:** sign up, confirm email (code), confirm phone (SMS code), upload ID and KRA, admin approves, pay the first month by M-Pesa, active.
 - **Tenant / caretaker:** a landlord invites them. They open the link, create a login, confirm the phone, and use their area.
 - **Admin:** created by hand, authenticator code required for every session.
-- **Visitor:** no account. Confirms a phone number by code, then requests a viewing.
+- **Visitor:** no account or phone code. Shares contact details and preferred viewing time; the landlord reaches out.
 
 ## Areas
 | Who | Pages |

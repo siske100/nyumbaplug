@@ -71,7 +71,6 @@ export const siteApi: SiteApi = {
       photos: ((ph ?? []) as Row[]).map((p) => supabase.storage.from("house-photos").getPublicUrl(p.storage_path as string).data.publicUrl),
     };
   },
-  async sendVisitCode(phone) { await callFunction("visit-code-send", { phone }); },
   async requestVisit(i) { await callFunction("visit-request", i as unknown as Record<string, unknown>); },
   inviteInfo: (token) => callFunction<InviteInfo>("invite-lookup", { token }),
   async acceptInvite(token, email, password) { await callFunction("invite-accept", { token, email, password }); },

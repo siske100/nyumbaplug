@@ -183,14 +183,15 @@ describe("viewing requests", () => {
     await rejects(as(db, user(w.la), "insert into visit_requests(house_id,visitor_name,visitor_phone,preferred_date,time_window) values ($1,'x y','0711000000',current_date,'Morning')", [w.hA]), /permission denied/);
     assert.equal((await as(db, anon, "select 1 from public_listings")).length > 0, true);
   });
-  it("landlords see a viewing only once it is scheduled for their house", async () => {
-    const [{ id }] = await sql(db, "select id from visit_requests where house_id=$1 limit 1", [w.hA]);
-    assert.equal((await as(db, user(w.la), "select 1 from visit_requests")).length, 0);
+  it("landlords see new requests for their house so they can contact visitors", async () => {
+    const [{ id }] = await as(db, server, "select create_visit_request($1,'Faith Njeri','0711666010',current_date+1,'Morning') id", [w.hA]);
+    assert.equal((await as(db, user(w.la), "select 1 from visit_requests where id=$1", [id])).length, 1);
+    assert.equal((await as(db, user(w.lb), "select 1 from visit_requests where id=$1", [id])).length, 0);
     assert.ok((await as(db, user(w.admin), "select 1 from visit_requests")).length > 0);
     await as(db, user(w.admin), "update visit_requests set status='contacted' where id=$1", [id]);
     await as(db, user(w.admin), "update visit_requests set status='scheduled', scheduled_date=current_date+2, scheduled_window='Morning' where id=$1", [id]);
-    assert.equal((await as(db, user(w.la), "select 1 from visit_requests")).length, 1);
-    assert.equal((await as(db, user(w.lb), "select 1 from visit_requests where house_id=$1", [w.hA])).length, 0);
+    assert.equal((await as(db, user(w.la), "select 1 from visit_requests where id=$1", [id])).length, 1);
+    assert.equal((await as(db, user(w.lb), "select 1 from visit_requests where id=$1", [id])).length, 0);
     await rejects(as(db, user(w.la), "update visit_requests set status='done' where id=$1", [id]), /permission denied|row-level/).catch(async () => {
       assert.equal((await as(db, user(w.la), "update visit_requests set status='done' where id=$1 returning id", [id])).length, 0);
     });

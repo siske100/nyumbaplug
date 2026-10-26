@@ -3,7 +3,9 @@
 
 export interface DarajaCreds { consumerKey: string; consumerSecret: string; shortcode: string; passkey: string }
 export interface StkRequest { amount: number; msisdn: string; accountRef: string; description: string; callbackUrl: string }
-export class DarajaError extends Error { constructor(message: string, public status = 0) { super(message); } }
+export class DarajaError extends Error {
+  constructor(message: string, public status = 0, public providerDetails?: Record<string, string>) { super(message); }
+}
 
 export interface Daraja {
   token(c: Pick<DarajaCreds, "consumerKey" | "consumerSecret">): Promise<string>;
@@ -72,7 +74,14 @@ export function createDaraja(env: string, fetchImpl: typeof fetch = fetch): Dara
     try { res = await fetchImpl(base + path, { ...init, signal: AbortSignal.timeout(15_000) }); }
     catch { throw new DarajaError("Could not reach Safaricom"); }
     const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!res.ok) throw Object.assign(new DarajaError(`Safaricom answered ${res.status}`, res.status), { body });
+    if (!res.ok) {
+      const providerDetails: Record<string, string> = {};
+      for (const key of ["requestId", "errorCode", "errorMessage", "ResponseCode", "ResponseDescription"]) {
+        const value = body[key];
+        if (typeof value === "string" || typeof value === "number") providerDetails[key] = String(value).slice(0, 300);
+      }
+      throw new DarajaError(`Safaricom answered ${res.status}`, res.status, providerDetails);
+    }
     return body;
   }
 
