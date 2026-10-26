@@ -27,8 +27,9 @@ export default function Browse() {
           backgroundSize: "cover",
         }}
       >
-        <h1 className="relative max-w-2xl text-4xl leading-[1.1] sm:text-5xl">Vacant houses across Kenya, from verified landlords</h1>
-        <p className="mt-3 max-w-xl text-graphite-200">Browse for free, get a suitable house, request viewing and move in.</p>
+        <p className="mb-2 text-sm font-medium text-ember-300">Rental Houses Kenya · operated by Referraliq Solutions</p>
+        <h1 className="relative max-w-2xl text-4xl leading-[1.1] sm:text-5xl">Find vacant rental homes across Kenya</h1>
+        <p className="mt-3 max-w-xl text-graphite-200">Browse listings without an account, compare available homes and request a viewing. Landlords can publish properties and manage tenancies.</p>
         <div className="mt-7 grid max-w-2xl gap-3 sm:grid-cols-[1fr_auto]">
           <SelectField label="County" value={county} onChange={(e) => setCounty(e.target.value as County | "")}>
             <option value="">All 47 counties</option>
