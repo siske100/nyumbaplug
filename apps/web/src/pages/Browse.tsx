@@ -102,26 +102,26 @@ export default function Browse() {
         </Panel>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Panel className="grid content-start gap-2 p-5">
+          <Panel id="for-house-hunters" className="grid content-start gap-2 p-5">
             <h3 className="text-xl">For house hunters</h3>
-            <p className="text-sm leading-6 text-graphite-300">Browse by county and house type, review rent, amenities and vacancy information, then request a viewing. A phone number is verified by SMS to reduce false requests and let the landlord follow up about the viewing.</p>
+            <p className="text-sm leading-6 text-graphite-300">Browse by county and house type, review rent, amenities and vacancy information, then request a viewing. Provide your contact details and preferred time so the landlord can follow up with you.</p>
           </Panel>
-          <Panel className="grid content-start gap-2 p-5">
+          <Panel id="for-landlords" className="grid content-start gap-2 p-5">
             <h3 className="text-xl">For landlords</h3>
             <p className="text-sm leading-6 text-graphite-300">Create a landlord account, submit details for review, publish available houses, manage tenants and payment records, and choose whether rent goes to the platform Paybill or your own connected Paybill. Google sign-in uses basic Google account information to create or access your landlord account; it does not access Gmail, Drive or contacts.</p>
             <Link to="/sign-up" className="mt-1 text-sm text-ember-300 underline-offset-4 hover:underline">Create a landlord account</Link>
           </Panel>
-          <Panel className="grid content-start gap-2 p-5">
+          <Panel id="for-tenants-caretakers" className="grid content-start gap-2 p-5">
             <h3 className="text-xl">For tenants and caretakers</h3>
             <p className="text-sm leading-6 text-graphite-300">Landlords invite tenants and caretakers. Depending on the role, invited users can access tenancy information, rent payments, documents, notices, complaints or assigned property tasks.</p>
           </Panel>
         </div>
 
-        <Panel className="grid gap-3 p-5 sm:p-7">
+        <Panel id="why-we-ask" className="grid gap-3 p-5 sm:p-7">
           <h2 className="text-2xl">Why we ask for information</h2>
           <ul className="grid gap-2 text-sm leading-6 text-graphite-300">
             <li><strong className="text-bone">Sign-in details:</strong> your name and email identify your account; passwords or Google sign-in authenticate it. Google provides basic profile information for sign-in only.</li>
-            <li><strong className="text-bone">Phone number:</strong> used for requested viewing verification, account messages, and landlord M-Pesa prompts or SMS features, as relevant to your role.</li>
+            <li><strong className="text-bone">Phone number:</strong> used to let landlords follow up on viewing requests, for account messages, and for landlord M-Pesa prompts or SMS features, as relevant to your role. Viewing-request numbers are not verified with a code.</li>
             <li><strong className="text-bone">Landlord identity and KRA documents:</strong> collected to review landlord eligibility and help protect rental listings from fraudulent accounts.</li>
             <li><strong className="text-bone">Viewing request details:</strong> your name, phone number, selected house and preferred time are shared with the relevant landlord so they can contact you and arrange the viewing. Your number is not verified with a code.</li>
             <li><strong className="text-bone">Payment and message records:</strong> used to confirm and reconcile M-Pesa transactions, maintain rent records, send requested SMS and track delivery. We do not ask for or store your M-Pesa PIN.</li>

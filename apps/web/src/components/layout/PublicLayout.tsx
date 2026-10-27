@@ -19,12 +19,33 @@ export function PublicLayout() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-3 pb-16 pt-6 sm:px-6"><Outlet /></main>
-      <footer className="mx-auto flex max-w-6xl flex-wrap justify-between gap-3 px-3 pb-8 text-sm text-graphite-400 sm:px-6">
-        <span>Rental Houses Kenya</span>
-        <nav aria-label="Legal" className="flex gap-4">
-          <Link to="/privacy" className="hover:text-bone">Privacy policy</Link>
-          <Link to="/terms" className="hover:text-bone">Terms of service</Link>
+      <footer className="mx-auto grid max-w-6xl gap-8 px-3 pb-8 text-sm text-graphite-400 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+        <div className="grid content-start gap-3">
+          <span className="font-medium text-bone">Rental Houses Kenya</span>
+          <Link to="/#about-rental-houses" className="w-fit hover:text-bone">About the service</Link>
+          <Link to="/#why-we-ask" className="w-fit hover:text-bone">Why we ask for information</Link>
+        </div>
+        <nav aria-label="For house hunters" className="grid content-start gap-3">
+          <Link to="/#for-house-hunters" className="w-fit font-medium text-bone hover:text-ember-300">For house hunters</Link>
         </nav>
+        <nav aria-label="For landlords" className="grid content-start gap-3">
+          <Link to="/#for-landlords" className="w-fit font-medium text-bone hover:text-ember-300">For landlords</Link>
+          <Link to="/sign-up" className="w-fit hover:text-bone">Create a landlord account</Link>
+        </nav>
+        <div className="grid content-start gap-3">
+          <nav aria-label="For tenants and caretakers" className="grid content-start gap-3">
+            <Link to="/#for-tenants-caretakers" className="w-fit font-medium text-bone hover:text-ember-300">For tenants and caretakers</Link>
+          </nav>
+          <nav aria-label="Contact" className="grid content-start gap-3">
+            <span className="font-medium text-bone">Call or WhatsApp</span>
+            <a href="tel:+254799326074" className="w-fit hover:text-bone">0799326074</a>
+            <a href="https://wa.me/254799326074" className="w-fit hover:text-bone" target="_blank" rel="noreferrer">Message us on WhatsApp</a>
+          </nav>
+          <nav aria-label="Legal" className="grid content-start gap-3">
+            <Link to="/privacy" className="w-fit hover:text-bone">Privacy policy</Link>
+            <Link to="/terms" className="w-fit hover:text-bone">Terms of service</Link>
+          </nav>
+        </div>
       </footer>
     </>
   );
