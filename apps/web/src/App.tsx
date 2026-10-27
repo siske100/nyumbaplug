@@ -15,6 +15,7 @@ import Terms from "@/pages/Terms";
 // Each area loads only when it is opened, so a visitor browsing houses never downloads the dashboards.
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const House = lazy(() => import("@/pages/House"));
+const About = lazy(() => import("@/pages/About"));
 const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
 const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
@@ -38,6 +39,7 @@ export default function App() {
       <Routes>
         <Route element={<PublicLayout />}>
           <Route index element={<Browse />} />
+          <Route path="about" element={<About />} />
           <Route path="house/:id" element={<House />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
