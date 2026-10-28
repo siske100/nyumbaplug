@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
   BroadcastResult, CaretakerItem, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
-  PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem,
+  PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
 } from "./types";
 
 type Row = Record<string, unknown>;
@@ -238,10 +238,21 @@ export const landlordApi: LandlordApi = {
       supabase.from("houses").select("id, title"),
     ]);
     const title = new Map((ok(h) as Row[]).map((x) => [x.id as string, x.title as string]));
-    return (ok(v) as Row[]).map((r) => ({
+    return (ok(v) as Row[]).map((r): VisitItem => ({
       id: r.id as string, visitorName: r.visitor_name as string, visitorPhone: r.visitor_phone as string, houseTitle: title.get(r.house_id as string) ?? "",
-      date: ((r.scheduled_date ?? r.preferred_date) as string | null) ?? null, window: ((r.scheduled_window ?? r.time_window) as string | null) ?? null, status: r.status as string, reschedules: num(r.reschedule_count),
+      preferredDate: r.preferred_date as string, timeWindow: r.time_window as string,
+      scheduledDate: (r.scheduled_date as string | null) ?? null, scheduledWindow: (r.scheduled_window as string | null) ?? null,
+      status: r.status as VisitStatus, reschedules: num(r.reschedule_count),
     }));
+  },
+  async updateVisit(visitId: string, patch: VisitPatch) {
+    const update: Row = {};
+    if (patch.status) update.status = patch.status;
+    if (patch.scheduledDate) update.scheduled_date = patch.scheduledDate;
+    if (patch.scheduledWindow) update.scheduled_window = patch.scheduledWindow;
+    const { data, error } = await supabase.from("visit_requests").update(update).eq("id", visitId).select("id").maybeSingle();
+    if (error) throw dbError(error);
+    if (!data) throw new ApiError(404, "Viewing not found");
   },
   async reschedule(visitId, date, window) {
     const { error } = await supabase.rpc("reschedule_visit", { p_request: visitId, p_date: date, p_window: window });

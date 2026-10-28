@@ -1,9 +1,9 @@
-import { CalendarDays, CreditCard, FileCheck2, MessageSquare } from "lucide-react";
+import { CreditCard, FileCheck2, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
 import { Stats } from "@/components/ui/Stats";
-import { useAdminCelcom, useAdminKyc, useAdminLandlords, useAdminPayments, useAdminViewings } from "@/features/admin/hooks";
+import { useAdminCelcom, useAdminKyc, useAdminLandlords, useAdminPayments } from "@/features/admin/hooks";
 import { useSession } from "@/features/auth/useSession";
 import { formatKes, plural } from "@/lib/format";
 
@@ -11,7 +11,7 @@ const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good 
 
 export default function AdminOverview() {
   const { data: session } = useSession();
-  const landlords = useAdminLandlords(), kyc = useAdminKyc(), payments = useAdminPayments(), celcom = useAdminCelcom(), viewings = useAdminViewings();
+  const landlords = useAdminLandlords(), kyc = useAdminKyc(), payments = useAdminPayments(), celcom = useAdminCelcom();
   const loading = landlords.isPending || payments.isPending || celcom.isPending;
 
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
@@ -19,13 +19,10 @@ export default function AdminOverview() {
   const due = (landlords.data ?? []).filter((l) => (l.state === "active" || l.state === "expired") && l.daysLeft !== null && l.daysLeft <= 7);
   const dueSum = due.reduce((a, l) => a + l.monthlyPrice, 0);
   const suspended = (landlords.data ?? []).filter((l) => l.state === "suspended").length;
-  const newViewings = (viewings.data ?? []).filter((v) => v.status === "new").length;
-
   const todo = [
     { show: (kyc.data?.length ?? 0) > 0, to: "/admin/documents", icon: FileCheck2, title: `${plural(kyc.data?.length ?? 0, "landlord")} waiting for approval`, note: "Review their ID and KRA documents." },
     { show: due.length > 0, to: "/admin/subscriptions", icon: CreditCard, title: `${plural(due.length, "subscription")} due within 7 days or overdue`, note: `${formatKes(dueSum)} to collect. Send reminders.`, urgent: true },
     { show: celcom.data?.low === true, to: "/admin/celcom", icon: MessageSquare, title: "Celcom credit is low", note: "Top up before verification codes stop.", urgent: true },
-    { show: newViewings > 0, to: "/admin/viewings", icon: CalendarDays, title: `${plural(newViewings, "new viewing request")}`, note: "Contact the visitors and schedule." },
   ].filter((t) => t.show);
 
   return (

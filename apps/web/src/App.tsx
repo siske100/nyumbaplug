@@ -27,7 +27,7 @@ const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy
 const C = { Layout: lazy(() => import("@/pages/caretaker/CaretakerLayout")), Tenants: lazy(() => import("@/pages/caretaker/Tenants")) };
 const A = {
   Layout: lazy(() => import("@/pages/admin/AdminLayout")), Overview: lazy(() => import("@/pages/admin/Overview")), Documents: lazy(() => import("@/pages/admin/Documents")),
-  Viewings: lazy(() => import("@/pages/admin/Viewings")), Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
+  Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
   Payouts: lazy(() => import("@/pages/admin/Payouts")), Celcom: lazy(() => import("@/pages/admin/Celcom")),
 };
 
@@ -79,7 +79,6 @@ export default function App() {
         <Route path="/admin" element={<RequireRole role="admin"><A.Layout /></RequireRole>}>
           <Route index element={<A.Overview />} />
           <Route path="documents" element={<A.Documents />} />
-          <Route path="viewings" element={<A.Viewings />} />
           <Route path="subscriptions" element={<A.Subscriptions />} />
           <Route path="payments" element={<A.Payments />} />
           <Route path="payouts" element={<A.Payouts />} />

@@ -68,12 +68,7 @@ export interface AdminKyc {
 }
 export interface AdminPayment { id: string; landlordId: string; landlordName: string; amount: number; ref: string; paidAt: string; byAdmin: boolean }
 export interface AdminCelcom { toppedUp: number; used: number; balance: number; low: boolean; monthSegments: number; monthRevenue: number; monthCost: number; monthProfit: number }
-export interface AdminViewing {
-  id: string; houseTitle: string; landlordName: string; visitorName: string; visitorPhone: string; preferredDate: string; timeWindow: string;
-  status: VisitStatus; scheduledDate: string | null; scheduledWindow: string | null; rescheduleCount: number; adminNotes: string | null; createdAt: string;
-}
 export interface AdminPayout { id: string; landlordName: string; amount: number; destinationKind: string; destination: string; accountRef: string | null; status: string; ref: string | null; at: string; paidAt: string | null }
-export interface ViewingPatch { status?: VisitStatus; scheduledDate?: string; scheduledWindow?: string; notes?: string }
 export interface AdminApi {
   landlords(): Promise<AdminLandlord[]>;
   kycQueue(): Promise<AdminKyc[]>;
@@ -85,8 +80,6 @@ export interface AdminApi {
   payments(): Promise<AdminPayment[]>;
   celcom(): Promise<AdminCelcom>;
   celcomTopup(amount: number, ref: string): Promise<void>;
-  viewings(): Promise<AdminViewing[]>;
-  updateViewing(id: string, patch: ViewingPatch): Promise<void>;
   payouts(): Promise<AdminPayout[]>;
   markPayoutPaid(id: string, ref: string): Promise<void>;
 }
@@ -130,7 +123,11 @@ export interface TenancyRow {
 export interface TenantInput { houseId: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string; rent: number; deposit: number; dueDay: number }
 export interface TenancyPatch { agreementPrintedOn?: string | null; agreementSignedOn?: string | null; electricityEnabled?: boolean; kplcPaybill?: string | null; meterNumber?: string | null }
 export interface InviteResult { link: string; smsSent: boolean; expiresAt: string }
-export interface VisitItem { id: string; visitorName: string; visitorPhone: string; houseTitle: string; date: string | null; window: string | null; status: string; reschedules: number }
+export interface VisitItem {
+  id: string; visitorName: string; visitorPhone: string; houseTitle: string; preferredDate: string; timeWindow: string;
+  scheduledDate: string | null; scheduledWindow: string | null; status: VisitStatus; reschedules: number;
+}
+export interface VisitPatch { status?: VisitStatus; scheduledDate?: string; scheduledWindow?: string }
 export interface CaretakerItem { caretakerId: string; name: string; phone: string | null; houseId: string; houseTitle: string }
 export interface LedgerRow { id: string; tenancyId: string; tenantName: string; unit: string; kind: "rent_payment" | "deposit_payment" | "reversal"; amount: number; method: string; ref: string; receipt: string; at: string; reversed: boolean }
 export interface HeldPayment { id: string; amount: number; billRef: string | null; reason: string; at: string; ref: string }
@@ -156,6 +153,7 @@ export interface LandlordApi {
   houseForEdit(houseId: string): Promise<HouseForEdit>;
   updateHouse(houseId: string, input: HouseInput, photos: File[]): Promise<void>;
   visits(): Promise<VisitItem[]>;
+  updateVisit(visitId: string, patch: VisitPatch): Promise<void>;
   reschedule(visitId: string, date: string, window: string): Promise<void>;
   tenants(): Promise<TenancyRow[]>;
   addTenant(input: TenantInput): Promise<void>;

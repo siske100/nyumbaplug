@@ -10,7 +10,6 @@ export const qk = {
     kyc: (u: string) => ["admin", u, "kyc"] as const,
     payments: (u: string) => ["admin", u, "payments"] as const,
     celcom: (u: string) => ["admin", u, "celcom"] as const,
-    viewings: (u: string) => ["admin", u, "viewings"] as const,
     all: (u: string) => ["admin", u] as const,
   },
   landlord: {

@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, dbError } from "./helpers";
-import type { AdminApi, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, AdminViewing, LandlordState, VisitStatus } from "./types";
+import type { AdminApi, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState } from "./types";
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => Number(v ?? 0);
@@ -76,25 +76,6 @@ export const adminApi: AdminApi = {
     if (error) throw error.code === "23505" ? new ApiError(409, "That payment reference was already recorded") : dbError(error);
   },
 
-  async viewings() {
-    const { data, error } = await supabase.from("admin_viewings").select("*").order("created_at", { ascending: false }).limit(200);
-    if (error) throw dbError(error);
-    return (data as Row[]).map((r): AdminViewing => ({
-      id: r.id as string, houseTitle: r.house_title as string, landlordName: (r.landlord_name as string) ?? "", visitorName: r.visitor_name as string,
-      visitorPhone: r.visitor_phone as string, preferredDate: r.preferred_date as string, timeWindow: r.time_window as string, status: r.status as VisitStatus,
-      scheduledDate: (r.scheduled_date as string | null) ?? null, scheduledWindow: (r.scheduled_window as string | null) ?? null,
-      rescheduleCount: num(r.reschedule_count), adminNotes: (r.admin_notes as string | null) ?? null, createdAt: r.created_at as string,
-    }));
-  },
-  async updateViewing(id, patch) {
-    const update: Row = {};
-    if (patch.status) update.status = patch.status;
-    if (patch.scheduledDate) update.scheduled_date = patch.scheduledDate;
-    if (patch.scheduledWindow) update.scheduled_window = patch.scheduledWindow;
-    if (patch.notes !== undefined) update.admin_notes = patch.notes.trim() || null;
-    const { error } = await supabase.from("visit_requests").update(update).eq("id", id);
-    if (error) throw dbError(error);
-  },
   async payouts() {
     const { data, error } = await supabase.from("admin_payouts").select("*").order("created_at", { ascending: false }).limit(100);
     if (error) throw dbError(error);
