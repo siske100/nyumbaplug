@@ -25,7 +25,7 @@ export function ActivateStep() {
     <div className="grid gap-4">
       <div>
         <h2 className="text-2xl">You are verified</h2>
-        <p className="mt-1 text-graphite-300">Pay your first month to switch on your account: {formatKes(price)} covers up to 20 houses, and each extra house adds KES 15 a month. You will get an M-Pesa prompt on your verified phone.</p>
+        <p className="mt-1 text-graphite-300">Pay your first month to switch on your account: {formatKes(price)} covers up to 20 houses, and each extra house adds KES 25 a month. You will get an M-Pesa prompt on your verified phone.</p>
       </div>
       <ErrorNote error={pay.error} />
       {waiting && <p role="status" className="text-ember-300">Check your phone and enter your M-Pesa PIN. This page updates by itself.</p>}

@@ -25,7 +25,7 @@ export default function Plan() {
       ]} />
       <Panel tone="hero" className="grid gap-4 p-5 sm:p-6">
         <h2 className="text-2xl">Renew</h2>
-        <p className="text-graphite-300">Renewing early adds 30 days to your end date. You pay {d ? formatKes(d.price) : "..."}: KES 1,000 covers 20 units, and each extra unit adds KES 15.</p>
+        <p className="text-graphite-300">Renewing early adds 30 days to your end date. You pay {d ? formatKes(d.price) : "..."}: KES 1,000 covers 20 units, and each extra unit adds KES 25.</p>
         <ErrorNote error={pay.error} />
         {pay.data && <p role="status" className="text-sm text-ok">{pay.data.message} Your plan extends when M-Pesa confirms.</p>}
         {waiting && <p role="status" className="text-sm text-ember-300">Waiting for your M-Pesa confirmation...</p>}

@@ -2,11 +2,11 @@
 // and a test keeps the two in step.
 export const BASE_PRICE = 1000;
 export const INCLUDED_UNITS = 20;
-export const EXTRA_UNIT_PRICE = 15;
+export const EXTRA_UNIT_PRICE = 25;
 
 export const priceForUnits = (units: number) => BASE_PRICE + Math.max(0, units - INCLUDED_UNITS) * EXTRA_UNIT_PRICE;
 
-/** "25 houses: 1,000 + 5 × 15 = 1,075" */
+/** "25 houses: 1,000 + 5 × 25 = 1,125" */
 export function priceFormula(units: number): string {
   const extra = Math.max(0, units - INCLUDED_UNITS);
   const n = (v: number) => v.toLocaleString("en-KE");

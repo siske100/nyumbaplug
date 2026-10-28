@@ -11,6 +11,8 @@
 4. **Silent prompts:** every 5 minutes the server asks Safaricom about prompts older than 3 minutes and settles them. After 24 hours they are written off.
 5. **Landlord purchases** (subscription, SMS credit) always go to the platform Paybill by prompt, with the amount fixed by the database.
 
+Subscriptions cost KES 1,000 per month for up to 20 houses, then KES 25 per additional house. The database calculates and validates the amount before a subscription payment can be recorded.
+
 ## What is tested, and what is not
 Tested: the request builders, callback and payment readers, the secret-address and Safaricom-confirmation checks, idempotency, amounts, wrong-Paybill refusal, encryption, held payments, reconciliation, payouts, and every database rule above.
 Not tested (needs live accounts, see `LAUNCH-CHECKLIST.md`): the actual conversation with Safaricom and Celcom.

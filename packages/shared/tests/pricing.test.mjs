@@ -6,10 +6,10 @@ import { priceForUnits, priceFormula } from "../src/pricing.ts";
 describe("pricing", () => {
   it("matches the agreed plan", () => {
     assert.equal(priceForUnits(0), 1000); assert.equal(priceForUnits(20), 1000);
-    assert.equal(priceForUnits(21), 1015); assert.equal(priceForUnits(25), 1075); assert.equal(priceForUnits(100), 2200);
+    assert.equal(priceForUnits(21), 1025); assert.equal(priceForUnits(25), 1125); assert.equal(priceForUnits(100), 3000);
   });
   it("explains the sum in words", () => {
-    assert.equal(priceFormula(25), "25 houses: 1,000 + 5 × 15 = 1,075");
+    assert.equal(priceFormula(25), "25 houses: 1,000 + 5 × 25 = 1,125");
     assert.equal(priceFormula(8), "8 houses (20 included): 1,000");
     assert.equal(priceFormula(1), "1 house (20 included): 1,000");
   });
