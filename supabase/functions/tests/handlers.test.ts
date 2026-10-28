@@ -125,14 +125,14 @@ Deno.test("web plumbing: errors show a safe message and never internals", async 
   assertEquals(h.status, 409);
 });
 
-const claimOk = (over: Record<string, unknown> = {}) => ({ claim_subscription_reminder: { data: { reminder_id: "r1", name: "Wanjiku Kamau", phone: "0712345678", price: 1075, days_left: 3, state: "active", ...over } } });
+const claimOk = (over: Record<string, unknown> = {}) => ({ claim_subscription_reminder: { data: { reminder_id: "r1", name: "Wanjiku Kamau", phone: "0712345678", price: 1125, days_left: 3, state: "active", ...over } } });
 
 Deno.test("reminder: the landlord is texted, the claim is finished, and Celcom usage is recorded", async () => {
   const { rpc, calls } = fakeRpc(claimOk());
   const s = sms();
   assertEquals(await sendSubscriptionReminder("admin1", "land1", { rpc, sms: s.provider }), { sent: true });
   assertEquals(s.sent[0]!.to, "254712345678");
-  assert(s.sent[0]!.text.includes("KES 1075") && s.sent[0]!.text.includes("3 days") && s.sent[0]!.text.startsWith("Hello Wanjiku"));
+  assert(s.sent[0]!.text.includes("KES 1125") && s.sent[0]!.text.includes("3 days") && s.sent[0]!.text.startsWith("Hello Wanjiku"));
   assertEquals(calls.map((c) => c.fn), ["claim_subscription_reminder", "finish_subscription_reminder", "celcom_record_usage"]);
   assertEquals(calls[1]!.args.p_ok, true);
   assertEquals(calls[2]!.args.p_segments, 1);
@@ -161,7 +161,7 @@ Deno.test("reminder text: one segment, a safe name, and the right wording for ex
   const cases = [
     { name: "Wanjiku Kamau", price: 1000, daysLeft: 30, state: "active" },
     { name: "Bartholomew-Maximilian Oluoch-Ochieng", price: 100000, daysLeft: 30, state: "active" },
-    { name: null, price: 1075, daysLeft: 1, state: "active" },
+    { name: null, price: 1125, daysLeft: 1, state: "active" },
     { name: "Mwangi", price: 1000, daysLeft: -2, state: "expired" },
   ];
   for (const c of cases) { const t = reminderText(c); assert(t.length <= 160, `too long: ${t.length}`); assertEquals(segmentsOf(t), 1); }

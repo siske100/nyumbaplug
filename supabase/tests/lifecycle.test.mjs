@@ -59,17 +59,17 @@ describe("landlord journey: verification, subscription, suspension", () => {
     const town = (await one(db, "select id from towns limit 1")).id;
     await sql(db, `insert into houses(landlord_id,title,county_id,town_id,house_type,rent_amount,deposit_amount,total_units,vacant_units)
       values ($1,'Big block',(select county_id from towns where id=$2),$2,'Bedsitter',5000,5000,25,25)`, [l2, town]);
-    assert.equal((await one(db, "select price_for_units(20) a, price_for_units(21) b, price_for_units(25) c")).c, 1075);
+    assert.deepEqual(await one(db, "select price_for_units(20) a, price_for_units(21) b, price_for_units(25) c"), { a: 1000, b: 1025, c: 1125 });
     assert.equal((await as(db, user(l2), "select 1 from admin_landlord_overview")).length, 0);   // landlords cannot use the admin overview
-    assert.deepEqual((await as(db, user(admin), "select units, monthly_price from admin_landlord_overview where landlord_id=$1", [l2]))[0], { units: 25, monthly_price: 1075 });
-    await rejects(as(db, server, "select activate_subscription($1,'MPESA0002',1000)", [l2]), /below the monthly price of 1075/);
-    await as(db, server, "select activate_subscription($1,'MPESA0003',1075)", [l2]);
+    assert.deepEqual((await as(db, user(admin), "select units, monthly_price from admin_landlord_overview where landlord_id=$1", [l2]))[0], { units: 25, monthly_price: 1125 });
+    await rejects(as(db, server, "select activate_subscription($1,'MPESA0002',1000)", [l2]), /below the monthly price of 1125/);
+    await as(db, server, "select activate_subscription($1,'MPESA0003',1125)", [l2]);
     assert.equal(await state(l2), "active");
     const sub = await one(db, "select (period_end - period_start) d, period_start = current_date as today from subscriptions where landlord_id=$1", [l2]);
     assert.deepEqual(sub, { d: 30, today: true });
-    await as(db, server, "select activate_subscription($1,'MPESA0003',1075)", [l2]);          // the same receipt again
+    await as(db, server, "select activate_subscription($1,'MPESA0003',1125)", [l2]);          // the same receipt again
     assert.equal((await one(db, "select count(*)::int n from subscription_payments where landlord_id=$1", [l2])).n, 1);
-    await as(db, server, "select activate_subscription($1,'MPESA0004',1075)", [l2]);          // early renewal adds 30 days to the end date
+    await as(db, server, "select activate_subscription($1,'MPESA0004',1125)", [l2]);          // early renewal adds 30 days to the end date
     assert.equal((await one(db, "select (period_end - current_date) d from subscriptions where landlord_id=$1", [l2])).d, 60);
     await rejects(sql(db, "update subscription_payments set amount_kes=1"), /append-only/);
   });

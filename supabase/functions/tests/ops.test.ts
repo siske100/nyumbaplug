@@ -94,10 +94,10 @@ Deno.test("landlord purchase: whole shillings only, rules come from the database
   const f = fake({ start_platform_attempt: () => ({ data: "pa-1" }) });
   const { d, pushes } = mkDaraja();
   await rejectsWith(() => platformPay(payDeps(f, d), { landlordId: "l", purpose: "subscription", amount: 1000.5, phone: "0712345678" }), 400);
-  const out = await platformPay(payDeps(f, d), { landlordId: "l", purpose: "subscription", amount: 1075, phone: "0712345678" });
-  eq(out.amount, 1075); eq(pushes[0]!.creds, PLATFORM); eq(pushes[0]!.req.accountRef, "SUBSCRIPTION");
-  const refuse = fake({ start_platform_attempt: () => ({ error: { code: "P0001", message: "The subscription is KES 1075" } }) });
-  await rejectsWith(() => platformPay(payDeps(refuse, d), { landlordId: "l", purpose: "subscription", amount: 900, phone: "0712345678" }), 400, /KES 1075/);
+  const out = await platformPay(payDeps(f, d), { landlordId: "l", purpose: "subscription", amount: 1125, phone: "0712345678" });
+  eq(out.amount, 1125); eq(pushes[0]!.creds, PLATFORM); eq(pushes[0]!.req.accountRef, "SUBSCRIPTION");
+  const refuse = fake({ start_platform_attempt: () => ({ error: { code: "P0001", message: "The subscription is KES 1125" } }) });
+  await rejectsWith(() => platformPay(payDeps(refuse, d), { landlordId: "l", purpose: "subscription", amount: 900, phone: "0712345678" }), 400, /KES 1125/);
 });
 
 // ---------------- Safaricom's answers ----------------
