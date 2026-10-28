@@ -80,6 +80,28 @@ describe("public viewing requests", () => {
     as(db, server, `select create_public_visit_request($1,'Faith Njeri',$2,${date},'Morning',$3) id`, [house ?? w.hA, phone, ip]);
   before(async () => { db = await freshDb(); w = await buildWorld(db); });
 
+  it("includes the expanded town catalog for all 47 counties without duplicate choices", async () => {
+    const coverage = await one(db, "select count(distinct county_id)::int counties, count(*)::int towns from towns");
+    assert.equal(coverage.counties, 47);
+    assert.ok(coverage.towns > 400, `expected expanded town catalog, got ${coverage.towns} towns`);
+    assert.equal((await one(db, "select count(*)::int duplicates from (select county_id, name from towns group by county_id, name having count(*) > 1) t")).duplicates, 0);
+    for (const [county, name] of [
+      [47, "Githurai 44"], [47, "Githurai 45"], [47, "Mihang’o"], [47, "Nairobi South"],
+      [22, "Kiambu"], [22, "Thika Town"], [22, "Lari"], [42, "Kisumu CBD"], [42, "Luanda Kotieno"],
+      [1, "Mombasa Old Town"], [2, "Ukunda"], [3, "Malindi"], [4, "Hola"], [5, "Mpeketoni"],
+      [6, "Wundanyi"], [7, "Dadaab"], [8, "Habaswein"], [9, "Elwak"], [10, "Moyale"],
+      [11, "Garbatulla"], [12, "Maua"], [13, "Chuka"], [14, "Runyenjes"], [15, "Mwingi"],
+      [16, "Machakos"], [17, "Wote"], [18, "Ol Kalou"], [19, "Karatina"], [20, "Kerugoya"],
+      [21, "Murang'a"], [23, "Lodwar"], [24, "Kapenguria"], [25, "Maralal"], [26, "Kitale"],
+      [27, "Eldoret"], [28, "Iten"], [29, "Kapsabet"], [30, "Kabarnet"], [31, "Nanyuki"],
+      [32, "Naivasha"], [33, "Kilgoris"], [34, "Kitengela"], [35, "Litein"], [36, "Sotik"],
+      [37, "Mumias"], [38, "Luanda"], [39, "Webuye"], [40, "Malaba"], [41, "Bondo"],
+      [43, "Mbita"], [44, "Awendo"], [45, "Ogembo"], [46, "Keroka"],
+    ]) {
+      assert.equal((await one(db, "select exists(select 1 from towns where county_id=$1 and name=$2) found", [county, name])).found, true, `${name} in county ${county}`);
+    }
+  });
+
   it("creates a viewing request directly with a phone number and preferred time", async () => {
     const [{ id }] = await submit("0711888001");
     assert.ok(id);

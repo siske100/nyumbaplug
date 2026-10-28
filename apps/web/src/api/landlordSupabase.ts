@@ -1,10 +1,10 @@
-import { priceForUnits, validateKycFile, validatePhoto } from "@rh/shared";
+import { MAX_PHOTOS, MIN_PHOTOS, priceForUnits, validateKycFile, validatePhoto } from "@rh/shared";
 import { cleanPhoto } from "@/lib/photos";
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
-  BroadcastResult, CaretakerItem, ComplaintItem, HeldPayment, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
+  BroadcastResult, CaretakerItem, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
   PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem,
 } from "./types";
 
@@ -71,6 +71,92 @@ async function complaintItems(uid: string): Promise<ComplaintItem[]> {
 
 export const landlordApi: LandlordApi = {
   houses: myHouses,
+
+  async houseForEdit(houseId): Promise<HouseForEdit> {
+    const { data: house, error } = await supabase.from("houses")
+      .select("id, title, county_id, town_id, house_type, rent_amount, deposit_amount, total_units, vacant_units, amenities, rules, electricity_note")
+      .eq("id", houseId).maybeSingle();
+    if (error) throw dbError(error);
+    if (!house) throw new ApiError(404, "House not found");
+    const { data: photos, error: photosError } = await supabase.from("house_photos")
+      .select("position, storage_path").eq("house_id", houseId).order("position");
+    if (photosError) throw dbError(photosError);
+    return {
+      input: {
+        title: house.title, countyId: house.county_id, townId: house.town_id, type: house.house_type, rent: house.rent_amount,
+        deposit: house.deposit_amount, total: house.total_units, vacant: house.vacant_units, amenities: house.amenities ?? [],
+        rules: house.rules ?? "", electricityNote: house.electricity_note ?? "",
+      },
+      photos: (photos ?? []).map((photo) => ({
+        path: photo.storage_path,
+        url: supabase.storage.from("house-photos").getPublicUrl(photo.storage_path).data.publicUrl,
+      })),
+    };
+  },
+
+  async updateHouse(houseId: string, input: HouseInput, photos: File[]): Promise<void> {
+    const uid = await currentUserId();
+    const { data: house, error: houseError } = await supabase.from("houses").select("id").eq("id", houseId).maybeSingle();
+    if (houseError) throw dbError(houseError);
+    if (!house) throw new ApiError(404, "House not found");
+
+    const { data: currentPhotos, error: photosError } = await supabase.from("house_photos")
+      .select("position, storage_path").eq("house_id", houseId).order("position");
+    if (photosError) throw dbError(photosError);
+    const existing = currentPhotos ?? [];
+    if (existing.length + photos.length < MIN_PHOTOS) throw new ApiError(422, `Keep at least ${MIN_PHOTOS} photos on the listing`);
+    if (existing.length + photos.length > MAX_PHOTOS) throw new ApiError(422, `A listing can have at most ${MAX_PHOTOS} photos`);
+
+    const checked = [];
+    for (const original of photos) {
+      const file = await cleanPhoto(original);
+      const result = validatePhoto(file, await head(file));
+      if (!result.ok) throw new ApiError(422, `${file.name}: ${result.reason}`);
+      checked.push({ file, mime: result.mime, ext: result.ext });
+    }
+
+    const usedPositions = new Set(existing.map((photo) => photo.position));
+    const availablePositions = Array.from({ length: MAX_PHOTOS }, (_, position) => position).filter((position) => !usedPositions.has(position));
+    const uploaded: string[] = [];
+    const inserted: { house_id: string; position: number; storage_path: string }[] = [];
+    try {
+      for (const [index, photo] of checked.entries()) {
+        const path = `${uid}/${houseId}/${crypto.randomUUID()}.${photo.ext}`;
+        const result = await supabase.storage.from("house-photos").upload(path, photo.file, { contentType: photo.mime, upsert: false });
+        if (result.error) throw new ApiError(400, "We could not upload your photos. Check your connection and try again.");
+        uploaded.push(path);
+        inserted.push({ house_id: houseId, position: availablePositions[index]!, storage_path: path });
+      }
+
+      if (inserted.length) {
+        const result = await supabase.from("house_photos").insert(inserted);
+        if (result.error) throw dbError(result.error);
+      }
+
+      const { data, error } = await supabase.from("houses").update({
+        title: input.title, county_id: input.countyId, town_id: input.townId, house_type: input.type, rent_amount: input.rent,
+        deposit_amount: input.deposit, total_units: input.total, vacant_units: input.vacant, amenities: input.amenities,
+        rules: input.rules || null, electricity_note: input.electricityNote || null,
+      }).eq("id", houseId).select("id").maybeSingle();
+      if (error) {
+        if (error.code === "23514") throw new ApiError(422, "Check the total and vacant units");
+        throw dbError(error);
+      }
+      if (!data) throw new ApiError(404, "House not found");
+    } catch (error) {
+      if (uploaded.length) {
+        const [rowsCleanup, filesCleanup] = await Promise.all([
+          supabase.from("house_photos").delete().eq("house_id", houseId).in("storage_path", uploaded),
+          supabase.storage.from("house-photos").remove(uploaded),
+        ]);
+        if (rowsCleanup.error || filesCleanup.error) {
+          console.error("Could not clean up uploaded house photos after a listing edit failed", rowsCleanup.error, filesCleanup.error);
+          throw new ApiError(500, "The listing could not be saved and uploaded photos need cleanup. Please contact support.");
+        }
+      }
+      throw error;
+    }
+  },
 
   async setVacantUnits(houseId, vacant) {
     const { error } = await supabase.from("houses").update({ vacant_units: vacant }).eq("id", houseId);

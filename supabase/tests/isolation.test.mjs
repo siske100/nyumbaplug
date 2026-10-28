@@ -66,6 +66,15 @@ describe("who can read what", () => {
     await rejects(as(db, user(w.lb), `insert into tenancies(landlord_id,house_id,unit_label,tenant_name,tenant_phone,emergency_name,emergency_phone,emergency_relationship,rent_amount,deposit_amount,due_day)
        values ($1,$2,'X','Tom','0711999999','Emma','0722999999','mum',1000,0,5)`, [w.lb, w.hA]), /foreign key|row-level security/);
   });
+  it("a landlord can edit their own house listing but cannot change its ownership", async () => {
+    const updated = await as(db, user(w.la), "update houses set title='Updated Block A', rent_amount=7200, rules='No smoking' where id=$1 returning id", [w.hA]);
+    assert.deepEqual(updated, [{ id: w.hA }]);
+    assert.deepEqual((await sql(db, "select title, rent_amount, rules from houses where id=$1", [w.hA]))[0], {
+      title: "Updated Block A", rent_amount: 7200, rules: "No smoking",
+    });
+    assert.equal((await as(db, user(w.lb), "update houses set title='Other landlord edit' where id=$1 returning id", [w.hA])).length, 0);
+    await rejects(as(db, user(w.la), "update houses set landlord_id=$1 where id=$2", [w.lb, w.hA]), /permission denied/);
+  });
   it("payment credentials and callback secrets can never be read from a browser", async () => {
     await rejects(as(db, user(w.la), "select credentials_ciphertext from payment_accounts"), /permission denied/);
     await rejects(as(db, user(w.la), "select callback_token from payment_accounts"), /permission denied/);

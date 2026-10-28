@@ -1,4 +1,4 @@
--- All 47 counties. Towns are added by the admin; a starter set is included.
+-- All 47 counties. Starter towns are included here; migration 0015 adds the expanded town catalog.
 insert into counties(id, name) values
  (1,'Mombasa'),(2,'Kwale'),(3,'Kilifi'),(4,'Tana River'),(5,'Lamu'),(6,'Taita-Taveta'),(7,'Garissa'),(8,'Wajir'),(9,'Mandera'),(10,'Marsabit'),
  (11,'Isiolo'),(12,'Meru'),(13,'Tharaka-Nithi'),(14,'Embu'),(15,'Kitui'),(16,'Machakos'),(17,'Makueni'),(18,'Nyandarua'),(19,'Nyeri'),(20,'Kirinyaga'),

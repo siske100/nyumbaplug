@@ -120,6 +120,7 @@ export interface Api {
 export type PaymentMode = "platform" | "own";
 export interface Place { counties: { id: number; name: string }[]; towns: { id: number; countyId: number; name: string }[] }
 export interface HouseInput { title: string; countyId: number; townId: number; type: HouseType; rent: number; deposit: number; total: number; vacant: number; amenities: string[]; rules: string; electricityNote: string }
+export interface HouseForEdit { input: HouseInput; photos: { path: string; url: string }[] }
 export interface TenancyRow {
   id: string; houseId: string; houseTitle: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   rent: number; deposit: number; dueDay: number; status: "active" | "notice" | "ended"; code: string; joined: boolean;
@@ -152,6 +153,8 @@ export interface LandlordApi {
   setVacantUnits(houseId: string, vacant: number): Promise<LandlordHouse>;
   places(): Promise<Place>;
   postHouse(input: HouseInput, photos: File[]): Promise<void>;
+  houseForEdit(houseId: string): Promise<HouseForEdit>;
+  updateHouse(houseId: string, input: HouseInput, photos: File[]): Promise<void>;
   visits(): Promise<VisitItem[]>;
   reschedule(visitId: string, date: string, window: string): Promise<void>;
   tenants(): Promise<TenancyRow[]>;
