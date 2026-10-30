@@ -5,7 +5,7 @@ import { useLandlordSummary } from "@/features/landlord/hooks";
 import { useLive } from "@/features/live";
 import { api } from "@/api";
 import { plural } from "@/lib/format";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord", label: "Overview", icon: LayoutGrid, end: true },
@@ -26,7 +26,6 @@ export default function LandlordLayout() {
   const { data } = useLandlordSummary();
   const complaints = useLive("landlord", "complaints", () => api.landlord.complaints());
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const items = LANDLORD_NAV.map((i) => (i.to === "/landlord/complaints" ? { ...i, badge: complaints.data?.filter((c) => c.status === "open").length } : i));
   const renew = data && data.subscriptionDaysLeft <= 7 && (
     <div className="glass-quiet border-ember-500/30 p-3.5">
@@ -35,5 +34,5 @@ export default function LandlordLayout() {
       <Button size="sm" className="w-full" onClick={() => navigate("/landlord/plan")}>Renew</Button>
     </div>
   );
-  return <AppShell items={items} railFooter={renew} mobile={MOBILE} fullWidth={pathname === "/landlord/visits"} />;
+  return <AppShell items={items} railFooter={renew} mobile={MOBILE} />;
 }

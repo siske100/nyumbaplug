@@ -7,14 +7,14 @@ import { Ambient } from "./Ambient";
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number; mobileOnly?: boolean }
 
-export function AppShell({ items, railFooter, mobile, fullWidth = false }: { items: NavItem[]; railFooter?: ReactNode; mobile?: string[]; fullWidth?: boolean }) {
+export function AppShell({ items, railFooter, mobile }: { items: NavItem[]; railFooter?: ReactNode; mobile?: string[] }) {
   const { data: session } = useSession();
   const signOut = useSignOut();
 
   return (
     <>
       <Ambient />
-      <div className={cn("mx-auto grid gap-4 p-3 md:grid-cols-[15rem_minmax(0,1fr)] md:p-5", fullWidth ? "w-full" : "max-w-7xl")}>
+      <div className="mx-auto grid w-full gap-4 p-3 md:grid-cols-[15rem_minmax(0,1fr)] md:p-5">
         <aside className="glass hidden h-[calc(100dvh-2.5rem)] flex-col rounded-2xl p-4 md:sticky md:top-5 md:flex">
           <div className="mb-6 flex items-center gap-2.5 px-1">
             <span className="grid size-8 place-items-center rounded-lg bg-ember-500 text-graphite-950"><Home className="size-4.5" aria-hidden /></span>
