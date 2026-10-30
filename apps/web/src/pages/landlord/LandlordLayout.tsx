@@ -20,8 +20,6 @@ export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord/notices", label: "Notices", icon: Megaphone },
   { to: "/landlord/more", label: "More", icon: Grid2x2, mobileOnly: true },
 ];
-const MOBILE = ["/landlord", "/landlord/houses", "/landlord/tenants", "/landlord/payments", "/landlord/more"];
-
 export default function LandlordLayout() {
   const { data } = useLandlordSummary();
   const complaints = useLive("landlord", "complaints", () => api.landlord.complaints());
@@ -34,5 +32,5 @@ export default function LandlordLayout() {
       <Button size="sm" className="w-full" onClick={() => navigate("/landlord/plan")}>Renew</Button>
     </div>
   );
-  return <AppShell items={items} railFooter={renew} mobile={MOBILE} />;
+  return <AppShell items={items} railFooter={renew} />;
 }

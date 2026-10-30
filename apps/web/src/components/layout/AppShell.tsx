@@ -1,4 +1,5 @@
-import { Home, LogOut, type LucideIcon } from "lucide-react";
+import { Home, LogOut, Menu, X, type LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useSession, useSignOut } from "@/features/auth/useSession";
@@ -7,9 +8,19 @@ import { Ambient } from "./Ambient";
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number; mobileOnly?: boolean }
 
-export function AppShell({ items, railFooter, mobile }: { items: NavItem[]; railFooter?: ReactNode; mobile?: string[] }) {
+export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?: ReactNode }) {
   const { data: session } = useSession();
   const signOut = useSignOut();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   return (
     <>
@@ -35,8 +46,12 @@ export function AppShell({ items, railFooter, mobile }: { items: NavItem[]; rail
           </div>
         </aside>
 
-        <div className="min-w-0 pb-24 md:pb-0">
-          <div className="mb-4 flex justify-end md:hidden">
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center justify-between md:hidden">
+            <button type="button" className="glass-quiet flex items-center gap-2 px-3 py-2 text-sm text-graphite-200" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
+              {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
+              {menuOpen ? "Close menu" : "Menu"}
+            </button>
             <button onClick={() => signOut.mutate()} className="glass-quiet flex items-center gap-2 px-3 py-2 text-sm text-graphite-200"><LogOut className="size-4" aria-hidden />Sign out</button>
           </div>
           <p className="sr-only">Signed in as {session?.name}</p>
@@ -44,13 +59,33 @@ export function AppShell({ items, railFooter, mobile }: { items: NavItem[]; rail
         </div>
       </div>
 
-      <nav aria-label="Main" className="glass fixed inset-x-3 bottom-3 z-20 flex justify-around rounded-2xl p-1.5 md:hidden" style={{ paddingBottom: "max(0.375rem, env(safe-area-inset-bottom))" }}>
-        {items.filter((i) => !mobile || mobile.includes(i.to)).map(({ to, label, icon: Icon, end, badge }) => (
-          <NavLink key={to} to={to} end={end} className={({ isActive }) => cn("flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-xs", isActive ? "bg-white/10 text-ember-300" : "text-graphite-300")}>
-            <span className="relative"><Icon className="size-5" aria-hidden />{!!badge && <span className="absolute -right-2 -top-1 size-2 rounded-full bg-ember-400" />}</span>{label}
-          </NavLink>
-        ))}
-      </nav>
+      {menuOpen && (
+        <div className="fixed inset-0 z-30 md:hidden">
+          <button type="button" className="absolute inset-0 size-full bg-black/60" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />
+          <aside id="mobile-navigation" className="glass absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto rounded-none rounded-r-2xl p-4 shadow-2xl" aria-label="Mobile navigation">
+            <div className="mb-6 flex items-center justify-between gap-2.5 px-1">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-8 place-items-center rounded-lg bg-ember-500 text-graphite-950"><Home className="size-4.5" aria-hidden /></span>
+                <span className="font-display text-lg">Rental Houses</span>
+              </div>
+              <button type="button" className="rounded-lg p-2 text-graphite-200 hover:bg-white/8" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)}><X className="size-5" aria-hidden /></button>
+            </div>
+            <nav aria-label="Main" className="grid gap-1">
+              {items.filter((i) => !i.mobileOnly).map(({ to, label, icon: Icon, end, badge }) => (
+                <NavLink key={to} to={to} end={end} onClick={() => setMenuOpen(false)} className={({ isActive }) => cn("flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[0.95rem] transition-colors", isActive ? "bg-white/10 text-bone" : "text-graphite-200 hover:bg-white/6")}>
+                  <Icon className="size-4.5" aria-hidden />{label}{!!badge && <span className="ml-auto rounded-full bg-ember-500/20 px-2 text-xs text-ember-300">{badge}</span>}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="mt-auto grid gap-3 pt-6">
+              {railFooter}
+              <button onClick={() => { setMenuOpen(false); signOut.mutate(); }} className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-graphite-200 hover:bg-white/6">
+                <LogOut className="size-4.5" aria-hidden />Sign out
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </>
   );
 }
