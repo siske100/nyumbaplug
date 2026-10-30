@@ -64,7 +64,7 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
           </div>
         </aside>
 
-        <div className="min-w-0">
+        <div className="min-w-0 pt-12 md:pt-0">
           <p className="sr-only">Signed in as {session?.name}</p>
           <Outlet />
         </div>
