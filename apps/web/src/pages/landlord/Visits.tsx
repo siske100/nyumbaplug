@@ -45,7 +45,6 @@ function ViewingRow({ visit }: { visit: VisitItem }) {
         <div className="flex flex-wrap gap-2">
           <a className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-ember-500 px-3 py-1.5 text-sm font-semibold text-graphite-950 shadow-[0_6px_24px_rgb(242_140_40/0.28)] transition-[colors,transform] duration-150 hover:bg-ember-400" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={`Contact ${visit.visitorName} on WhatsApp`}>Contact on WhatsApp</a>
           <Button variant="glass" size="sm" loading={update.isPending} onClick={() => changeStatus("house_taken")}>House taken</Button>
-          <Button variant="ghost" size="sm" loading={update.isPending} onClick={() => changeStatus("cancelled")}>Cancel request</Button>
         </div>
       )}
       {visit.status === "contacted" && (
@@ -57,7 +56,6 @@ function ViewingRow({ visit }: { visit: VisitItem }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="glass" size="sm" loading={update.isPending} onClick={() => changeStatus("house_taken")}>House taken</Button>
-            <Button variant="ghost" size="sm" loading={update.isPending} onClick={() => changeStatus("cancelled")}>Cancel request</Button>
           </div>
         </>
       )}
@@ -67,7 +65,6 @@ function ViewingRow({ visit }: { visit: VisitItem }) {
             <Button size="sm" loading={update.isPending} onClick={() => changeStatus("done")}>Done</Button>
             <Button variant="glass" size="sm" loading={update.isPending} onClick={() => changeStatus("no_show")}>No-show</Button>
             <Button variant="glass" size="sm" loading={update.isPending} onClick={() => changeStatus("house_taken")}>House taken</Button>
-            <Button variant="ghost" size="sm" loading={update.isPending} onClick={() => changeStatus("cancelled")}>Cancel</Button>
             {canReschedule && open !== visit.id && <Button variant="glass" size="sm" onClick={() => { setDate(visit.scheduledDate ?? days[0]!.value); setWin(visit.scheduledWindow ?? preferredWindow); setOpen(visit.id); }}>Reschedule</Button>}
           </div>
           {open === visit.id && (
