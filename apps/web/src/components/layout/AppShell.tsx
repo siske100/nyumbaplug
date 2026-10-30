@@ -22,6 +22,24 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (signOut.isPending) return;
+
+    let timeout: number;
+    const resetIdleTimeout = () => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => signOut.mutate(), 60_000);
+    };
+    const activityEvents = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "wheel"];
+    activityEvents.forEach((event) => window.addEventListener(event, resetIdleTimeout, { passive: true }));
+    resetIdleTimeout();
+
+    return () => {
+      window.clearTimeout(timeout);
+      activityEvents.forEach((event) => window.removeEventListener(event, resetIdleTimeout));
+    };
+  }, [signOut.isPending, signOut.mutate]);
+
   return (
     <>
       <Ambient />
@@ -47,9 +65,6 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
         </aside>
 
         <div className="min-w-0">
-          <div className="mb-4 flex justify-end md:hidden">
-            <button onClick={() => signOut.mutate()} className="glass-quiet flex items-center gap-2 px-3 py-2 text-sm text-graphite-200"><LogOut className="size-4" aria-hidden />Sign out</button>
-          </div>
           <p className="sr-only">Signed in as {session?.name}</p>
           <Outlet />
         </div>

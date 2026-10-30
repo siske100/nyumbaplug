@@ -39,6 +39,27 @@
   ::selection { background: rgb(242 140 40 / 0.35); }
 }
 
+@media (max-width: 47.999rem) {
+  :root {
+    --text-xs: calc(0.75rem * 0.6);
+    --text-sm: calc(0.875rem * 0.6);
+    --text-base: calc(1rem * 0.6);
+    --text-lg: calc(1.125rem * 0.6);
+    --text-xl: calc(1.25rem * 0.6);
+    --text-2xl: calc(1.5rem * 0.6);
+    --text-3xl: calc(1.875rem * 0.6);
+    --text-4xl: calc(2.25rem * 0.6);
+    --text-5xl: calc(3rem * 0.6);
+    --text-6xl: calc(3.75rem * 0.6);
+    --text-7xl: calc(4.5rem * 0.6);
+    --text-8xl: calc(6rem * 0.6);
+    --text-9xl: calc(8rem * 0.6);
+  }
+
+  [class~="text-[0.95rem]"] { font-size: 0.57rem !important; }
+  [class~="text-[10px]"] { font-size: 6px !important; }
+}
+
 /* One ambient light source (ember) and one cool grey, fixed behind everything.
    The glass panels only read as glass because there is light to refract. */
 .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--color-graphite-950); }
