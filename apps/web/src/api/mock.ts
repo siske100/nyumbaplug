@@ -6,7 +6,7 @@
  */
 import { ApiError } from "@/lib/queryClient";
 import { vacantUnitsSchema } from "@/lib/validation";
-import type { Api, KycStatus, LandlordHouse, LandlordSummary, ListingFilters, PublicListing, Role, Session } from "./types";
+import type { Api, KycStatus, LandlordHouse, LandlordSummary, ListingFilters, PublicListing, Role, Session, TenantHome } from "./types";
 
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 let currentUserId: string | null = null;
@@ -60,7 +60,7 @@ export const mockApi: Api = {
     throw new ApiError(501, "Google sign-in turns on once the backend is connected");
   },
 
-  // ---- Onboarding stand-in. In development the email and tenant/caretaker phone code is always 123456. ----
+  // ---- Onboarding stand-in. In development the email and tenant phone code is always 123456. ----
   async signUpLandlord({ name, email, phone }): Promise<void> {
     await wait(300);
     users["u-new"] = { userId: "u-new", role: "landlord", name, email, phone, landlordState: "pending_email" };
@@ -161,6 +161,36 @@ export const mockApi: Api = {
       return toPublic(row);
     },
   }),
-  tenant: unavailable<Api["tenant"]>({}),
+  tenant: unavailable<Api["tenant"]>({
+    async home(): Promise<TenantHome> {
+      requireSession("tenant");
+      await wait();
+      const now = new Date();
+      const lastPayment = new Date(now.getFullYear(), now.getMonth() - 1, 5, 12).toISOString();
+      return {
+        tenancy: {
+          id: "demo-tenancy",
+          houseTitle: "Bedsitters, Block B",
+          unit: "B3",
+          rent: 6500,
+          dueDay: 5,
+          code: "DEMO-B3",
+          agreementPath: null,
+          agreementSignedOn: new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString(),
+          electricityEnabled: false,
+          kplcPaybill: null,
+          meterNumber: null,
+          emergencyName: "Mary Wanjiku",
+          emergencyPhone: "0712345678",
+          emergencyRelationship: "Mother",
+        },
+        balance: 6500,
+        charged: 13000,
+        paid: 6500,
+        history: [{ id: "demo-payment-1", amount: 6500, kind: "rent_payment", receipt: "DEMO12345", at: lastPayment }],
+        lastAttempt: null,
+      };
+    },
+  }),
   site: unavailable<Api["site"]>({}),
 };

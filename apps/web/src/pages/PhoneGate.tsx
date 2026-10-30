@@ -3,7 +3,7 @@ import { Panel } from "@/components/ui/Panel";
 import type { Session } from "@/api/types";
 import { PhoneStep } from "@/pages/landlord/onboarding/PhoneStep";
 
-/** Tenants and caretakers confirm the phone number their landlord gave us before they can use their account. */
+/** Tenants confirm the phone number their landlord gave us before they can use their account. */
 export function PhoneGate({ session }: { session: Session }) {
   return (
     <>

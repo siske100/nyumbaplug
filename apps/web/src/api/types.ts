@@ -1,6 +1,6 @@
 import type { County, HouseType } from "@/data/counties";
 
-export type Role = "landlord" | "tenant" | "caretaker" | "admin";
+export type Role = "landlord" | "tenant" | "admin";
 
 /** Landlord journey: each step unlocks the next. Decided by the server, only displayed here. */
 export type LandlordState =
@@ -15,7 +15,7 @@ export interface Session {
   phone?: string | null;
   phoneVerified?: boolean;
   landlordState?: LandlordState;   // landlords only
-  landlordOnHold?: boolean;        // tenants and caretakers: their landlord is expired or suspended
+  landlordOnHold?: boolean;        // tenants: their landlord is expired or suspended
   mfa?: "ok" | "enroll" | "challenge";   // admins only: the authenticator code step
 }
 
@@ -128,7 +128,6 @@ export interface VisitItem {
   scheduledDate: string | null; scheduledWindow: string | null; status: VisitStatus; reschedules: number;
 }
 export interface VisitPatch { status?: VisitStatus; scheduledDate?: string; scheduledWindow?: string }
-export interface CaretakerItem { caretakerId: string; name: string; phone: string | null; houseId: string; houseTitle: string }
 export interface LedgerRow { id: string; tenancyId: string; tenantName: string; unit: string; kind: "rent_payment" | "deposit_payment" | "reversal"; amount: number; method: string; ref: string; receipt: string; at: string; reversed: boolean }
 export interface HeldPayment { id: string; amount: number; billRef: string | null; reason: string; at: string; ref: string }
 export interface PayoutRow { id: string; amount: number; status: string; destination: string; at: string; paidAt: string | null; ref: string | null }
@@ -140,7 +139,7 @@ export interface SmsOverview { balance: number; messages: SmsMessage[]; triggers
 export interface BroadcastResult { sent: number; failed: number; skipped: number; paused: boolean }
 export interface SubscriptionInfo { state: LandlordState; units: number; price: number; periodEnd: string | null; daysLeft: number | null; payments: { id: string; amount: number; ref: string; at: string }[]; lastAttempt: { status: string; at: string } | null }
 export interface ComplaintMsg { id: number; mine: boolean; body: string; at: string }
-export interface ComplaintItem { id: string; title: string; category: string; status: "open" | "in_progress" | "resolved"; priority: string; at: string; tenantName: string; unit: string; houseTitle: string; assignedTo: string | null; messages: ComplaintMsg[] }
+export interface ComplaintItem { id: string; title: string; category: string; status: "open" | "in_progress" | "resolved"; priority: string; at: string; tenantName: string; unit: string; houseTitle: string; messages: ComplaintMsg[] }
 export interface NoticeItem { id: string; title: string; body: string; at: string; houseId: string | null }
 export type PurchasePurpose = "subscription" | "sms_recharge";
 
@@ -162,9 +161,6 @@ export interface LandlordApi {
   uploadAgreement(id: string, file: File): Promise<void>;
   fileUrl(bucket: "agreements", path: string): Promise<string>;
   inviteTenant(tenancyId: string): Promise<InviteResult>;
-  inviteCaretaker(houseId: string, name: string, phone: string): Promise<InviteResult>;
-  caretakers(): Promise<CaretakerItem[]>;
-  removeCaretaker(caretakerId: string, houseId: string): Promise<void>;
   payments(): Promise<PaymentsOverview>;
   resolveHeld(heldId: string, tenancyId: string): Promise<void>;
   reversePayment(entryId: string, reason: string): Promise<void>;
@@ -203,7 +199,7 @@ export interface TenantApi {
 }
 
 export interface HouseDetail extends PublicListing { rules: string | null; electricityNote: string | null; photos: string[] }
-export interface InviteInfo { kind: "tenant" | "caretaker"; landlordName: string | null; inviteeName: string | null; houseTitle: string; unit: string | null; phoneHint: string }
+export interface InviteInfo { kind: "tenant"; landlordName: string | null; inviteeName: string | null; houseTitle: string; unit: string | null; phoneHint: string }
 export interface VisitRequestInput { houseId: string; name: string; phone: string; date: string; window: string }
 export interface SiteApi {
   house(id: string): Promise<HouseDetail | null>;

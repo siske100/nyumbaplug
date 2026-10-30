@@ -33,8 +33,8 @@ export function PublicLayout() {
           <Link to="/sign-up" className="w-fit hover:text-bone">Create a landlord account</Link>
         </nav>
         <div className="grid content-start gap-3">
-          <nav aria-label="For tenants and caretakers" className="grid content-start gap-3">
-            <Link to="/about#for-tenants-caretakers" className="w-fit font-medium text-bone hover:text-ember-300">For tenants and caretakers</Link>
+          <nav aria-label="For tenants" className="grid content-start gap-3">
+            <Link to="/about#for-tenants" className="w-fit font-medium text-bone hover:text-ember-300">For tenants</Link>
           </nav>
           <nav aria-label="Contact" className="grid content-start gap-3">
             <span className="font-medium text-bone">Call or WhatsApp</span>

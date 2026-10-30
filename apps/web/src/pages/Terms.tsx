@@ -14,7 +14,7 @@ const sections = [
     title: "Accounts and eligibility",
     content: <>
       <p>You must provide accurate information, be legally able to use the service, keep your sign-in details secure and promptly tell us about suspected account misuse. Do not impersonate another person or create an account for someone without authority.</p>
-      <p>Landlord accounts may require email confirmation, contact details, identity and KRA documents, administrator approval and payment of the applicable subscription before listings become active. Google sign-in creates a landlord account; it does not bypass verification, approval or payment requirements. Tenants and caretakers access accounts through landlord invitations and applicable verification steps.</p>
+      <p>Landlord accounts may require email confirmation, contact details, identity and KRA documents, administrator approval and payment of the applicable subscription before listings become active. Google sign-in creates a landlord account; it does not bypass verification, approval or payment requirements. Tenants access accounts through landlord invitations and applicable verification steps.</p>
     </>,
   },
   {

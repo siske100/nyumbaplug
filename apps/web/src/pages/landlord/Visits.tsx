@@ -28,13 +28,14 @@ function ViewingRow({ visit }: { visit: VisitItem }) {
   const resched = useLiveMutation("landlord", (v: { id: string; date: string; window: string }) => api.landlord.reschedule(v.id, v.date, v.window));
   const changeStatus = (status: VisitStatus) => update.mutate({ id: visit.id, patch: { status } });
   const canReschedule = (visit.status === "scheduled" || visit.status === "rescheduled") && visit.reschedules < 2;
+  const whatsappUrl = `https://wa.me/254${visit.visitorPhone.slice(1)}`;
 
   return (
     <div className="grid gap-3 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-lg font-medium">{visit.visitorName}</p>
-          <p className="text-sm text-graphite-300"><a className="text-ember-300 hover:underline" href={`https://wa.me/254${visit.visitorPhone.slice(1)}`} target="_blank" rel="noopener noreferrer">{visit.visitorPhone}</a> · {visit.houseTitle}</p>
+          <p className="text-sm text-graphite-300"><a className="text-ember-300 hover:underline" href={whatsappUrl} target="_blank" rel="noopener noreferrer">{visit.visitorPhone}</a> · {visit.houseTitle}</p>
           <p className="text-sm text-graphite-300">Prefers {fmtDay(visit.preferredDate)}, {visit.timeWindow.toLowerCase()}</p>
           {visit.scheduledDate && <p className="text-sm text-ok">Scheduled {fmtDay(visit.scheduledDate)}, {visit.scheduledWindow?.toLowerCase()}{visit.reschedules ? ` · rescheduled ${visit.reschedules} of 2` : ""}</p>}
         </div>
@@ -42,7 +43,7 @@ function ViewingRow({ visit }: { visit: VisitItem }) {
       </div>
       {visit.status === "new" && (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" loading={update.isPending} onClick={() => changeStatus("contacted")}>Mark contacted</Button>
+          <a className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-ember-500 px-3 py-1.5 text-sm font-semibold text-graphite-950 shadow-[0_6px_24px_rgb(242_140_40/0.28)] transition-[colors,transform] duration-150 hover:bg-ember-400" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={`Contact ${visit.visitorName} on WhatsApp`}>Contact on WhatsApp</a>
           <Button variant="glass" size="sm" loading={update.isPending} onClick={() => changeStatus("house_taken")}>House taken</Button>
           <Button variant="ghost" size="sm" loading={update.isPending} onClick={() => changeStatus("cancelled")}>Cancel request</Button>
         </div>

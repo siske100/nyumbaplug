@@ -51,7 +51,7 @@ export async function rejects(promise, pattern) {
   assert.fail(`expected an error matching ${pattern}`);
 }
 
-/** Two landlords, a tenant for each, a caretaker and an admin, with houses, photos, tenancies and charges. */
+/** Two landlords, a tenant for each and an admin, with houses, photos, tenancies and charges. */
 export async function buildWorld(db) {
   const w = {};
   w.admin = await mkUser(db, "admin@x.ke", { app: { invited_role: "admin" } });
@@ -59,7 +59,6 @@ export async function buildWorld(db) {
   w.lb = await mkUser(db, "lb@x.ke");
   w.ta = await mkUser(db, "ta@x.ke", { app: { invited_role: "tenant" } });
   w.tb = await mkUser(db, "tb@x.ke", { app: { invited_role: "tenant" } });
-  w.care = await mkUser(db, "care@x.ke", { app: { invited_role: "caretaker" } });
   for (const id of [w.la, w.lb]) await sql(db, "update profiles set landlord_state='active', phone_verified=true where id=$1", [id]);
 
   const town = (await sql(db, "select id from towns where name='Bungoma Town'"))[0].id;
@@ -84,6 +83,5 @@ export async function buildWorld(db) {
   };
   w.tA = await mkTenancy(w.la, w.hA, "A1", "0711000001", "0722000001", w.ta);
   w.tB = await mkTenancy(w.lb, w.hB, "B1", "0711000002", "0722000002", w.tb);
-  await as(db, user(w.la), "insert into caretaker_assignments(caretaker_id,landlord_id,house_id) values ($1,$2,$3)", [w.care, w.la, w.hA]);
   return w;
 }

@@ -13,7 +13,7 @@ import { homeFor, useSession } from "@/features/auth/useSession";
 import { qk } from "@/lib/queryKeys";
 import { emailSchema, passwordSchema } from "@/lib/validation";
 
-/** A tenant or caretaker opens the link their landlord sent, and creates their login. */
+/** A tenant opens the link their landlord sent, and creates their login. */
 export default function InviteAccept() {
   const { token = "" } = useParams();
   const { data: session } = useSession();
@@ -44,8 +44,8 @@ export default function InviteAccept() {
     <main className="grid min-h-[100dvh] place-items-center px-4 py-10">
       <Ambient />
       <Panel tone="hero" className="w-full max-w-md p-7 sm:p-9">
-        <h1 className="text-3xl">{i.kind === "tenant" ? `Welcome${i.inviteeName ? `, ${i.inviteeName.split(" ")[0]}` : ""}` : "Join as a caretaker"}</h1>
-        <p className="mt-2 text-graphite-300">{i.landlordName ?? "Your landlord"} invited you to {i.kind === "tenant" ? "pay rent and stay in touch for" : "help look after"} <span className="text-bone">{i.houseTitle}{i.unit ? `, unit ${i.unit}` : ""}</span>. We will text a code to {i.phoneHint} to confirm your phone.</p>
+        <h1 className="text-3xl">Welcome{i.inviteeName ? `, ${i.inviteeName.split(" ")[0]}` : ""}</h1>
+        <p className="mt-2 text-graphite-300">{i.landlordName ?? "Your landlord"} invited you to pay rent and stay in touch for <span className="text-bone">{i.houseTitle}{i.unit ? `, unit ${i.unit}` : ""}</span>. We will text a code to {i.phoneHint} to confirm your phone.</p>
         <form className="mt-6 grid gap-4" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
           <Field label="Your email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errs.email} />
           <Field label="Choose a password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errs.password} hint="At least 10 characters, with letters and numbers" />

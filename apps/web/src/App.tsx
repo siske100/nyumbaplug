@@ -19,12 +19,11 @@ const About = lazy(() => import("@/pages/About"));
 const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
 const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
-  Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")), Caretakers: lazy(() => import("@/pages/landlord/Caretakers")),
+  Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")),
   Payments: lazy(() => import("@/pages/landlord/Payments")), Mpesa: lazy(() => import("@/pages/landlord/MpesaSetup")), Sms: lazy(() => import("@/pages/landlord/Sms")),
   Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")), Agreement: lazy(() => import("@/pages/landlord/AgreementPrint")),
 };
 const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy(() => import("@/pages/tenant/Pay")), Documents: lazy(() => import("@/pages/tenant/Documents")) };
-const C = { Layout: lazy(() => import("@/pages/caretaker/CaretakerLayout")), Tenants: lazy(() => import("@/pages/caretaker/Tenants")) };
 const A = {
   Layout: lazy(() => import("@/pages/admin/AdminLayout")), Overview: lazy(() => import("@/pages/admin/Overview")), Documents: lazy(() => import("@/pages/admin/Documents")),
   Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
@@ -53,7 +52,6 @@ export default function App() {
           <Route path="houses" element={<L.Houses />} />
           <Route path="visits" element={<L.Visits />} />
           <Route path="tenants" element={<L.Tenants />} />
-          <Route path="caretakers" element={<L.Caretakers />} />
           <Route path="payments" element={<L.Payments />} />
           <Route path="mpesa" element={<L.Mpesa />} />
           <Route path="sms" element={<L.Sms />} />
@@ -69,11 +67,6 @@ export default function App() {
           <Route path="complaints" element={<ComplaintsView role="tenant" />} />
           <Route path="documents" element={<T.Documents />} />
           <Route path="notices" element={<NoticesView role="tenant" />} />
-        </Route>
-
-        <Route path="/caretaker" element={<RequireRole role="caretaker"><C.Layout /></RequireRole>}>
-          <Route index element={<ComplaintsView role="caretaker" />} />
-          <Route path="tenants" element={<C.Tenants />} />
         </Route>
 
         <Route path="/admin" element={<RequireRole role="admin"><A.Layout /></RequireRole>}>

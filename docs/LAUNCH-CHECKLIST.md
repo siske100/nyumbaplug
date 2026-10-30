@@ -27,7 +27,7 @@ Everything below needs a live account, so it could not be proved in the build en
 ## Known limits (by design, for now)
 - Payouts to landlords on the platform Paybill are prepared automatically and paid by you (admin) by hand, then recorded. Automatic payouts need Safaricom's B2C approval.
 - Own-Paybill mode supports Paybill numbers, not Till numbers.
-- Tenants and caretakers sign in with email and password. Google is for landlords.
+- Tenants sign in with email and password. Google is for landlords.
 - A payment found by the status check (not the callback) carries a clearly marked `STKQ-` reference instead of the M-Pesa receipt number.
 - Photos are stripped and shrunk in the browser. A modified browser could upload an unstripped photo.
 - English only.

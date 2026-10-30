@@ -27,6 +27,7 @@ export default function MpesaSetup() {
     if (Object.keys(e).length) return;
     connect.mutate({ shortcode: f.shortcode, consumerKey: f.consumerKey.trim(), consumerSecret: f.consumerSecret.trim(), passkey: f.passkey.trim() }, {
       onSuccess: (r) => { setF({ shortcode: "", consumerKey: "", consumerSecret: "", passkey: "" }); setShowForm(false); setResult(r.status === "connected" ? "Connected. You can now switch rent to your own Paybill below." : r.reason ?? "Safaricom did not accept these details."); },
+      onError: () => { setF({ shortcode: "", consumerKey: "", consumerSecret: "", passkey: "" }); setErrs({}); },
     });
   };
 
@@ -65,7 +66,7 @@ export default function MpesaSetup() {
             <Field label="Consumer secret" type="password" autoComplete="off" value={f.consumerSecret} onChange={(e) => setF({ ...f, consumerSecret: e.target.value })} error={errs.consumerSecret} />
             <Field label="Passkey" type="password" autoComplete="off" value={f.passkey} onChange={(e) => setF({ ...f, passkey: e.target.value })} error={errs.passkey} />
             <ErrorNote error={connect.error} />
-            <div className="flex gap-2"><Button magnetic loading={connect.isPending} onClick={submit}>Test and connect</Button><Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button></div>
+            <div className="flex gap-2"><Button magnetic loading={connect.isPending} onClick={submit}>Test and connect</Button><Button variant="ghost" onClick={() => { setF({ shortcode: "", consumerKey: "", consumerSecret: "", passkey: "" }); setErrs({}); setShowForm(false); }}>Cancel</Button></div>
           </div>
         )}
       </Panel>

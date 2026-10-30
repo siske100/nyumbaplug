@@ -308,8 +308,9 @@ Deno.test("invite: the link carries a secret that is stored only as a hash, and 
   ok(!JSON.stringify(f.calls.filter((c) => c.fn === "create_invite")).includes(token), "the raw secret must never reach the database");
   ok(s.sent[0]!.text.includes(token));
   const paused = fake({ create_invite: () => ({ data: "x" }), invite_lookup: () => ({ data: info }), sms_charge: () => ({ data: "m" }), sms_message_status: () => ({ data: "paused_insufficient_balance" }) });
-  const out2 = await createInvite({ ...d, rpc: paused.rpc }, { landlordId: "l", kind: "caretaker", houseId: "h", phone: "0722111222" });
+  const out2 = await createInvite({ ...d, rpc: paused.rpc }, { landlordId: "l", kind: "tenant", tenancyId: "t1" });
   eq(out2.smsSent, false); ok(out2.link.length > 40);
+  await rejectsWith(() => createInvite(d, { landlordId: "l", kind: "caretaker" }), 400, /Choose tenant/);
   await rejectsWith(() => createInvite(d, { landlordId: "l", kind: "admin" }), 400);
   await rejectsWith(() => createInvite({ ...d, rpc: fake({ create_invite: () => ({ error: { code: "P0001", message: "This tenant has already joined" } }) }).rpc }, { landlordId: "l", kind: "tenant", tenancyId: "t" }), 400, /already joined/);
 });

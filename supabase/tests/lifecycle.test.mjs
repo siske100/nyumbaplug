@@ -253,16 +253,15 @@ describe("tenant features: complaints, emergency contact, notices", () => {
   let db, w;
   before(async () => { db = await freshDb(); w = await buildWorld(db); });
 
-  it("a tenant files a complaint; the landlord and assigned caretaker see it; nobody else does", async () => {
+  it("a tenant files a complaint; the landlord sees it; nobody else does", async () => {
     const [{ id }] = await as(db, user(w.ta), "insert into complaints(tenancy_id,category,title) values ($1,'Water','No water since morning') returning id", [w.tA]);
     assert.equal((await one(db, "select landlord_id from complaints where id=$1", [id])).landlord_id, w.la);   // set by the database, not the browser
     assert.equal((await as(db, user(w.la), "select 1 from complaints")).length, 1);
-    assert.equal((await as(db, user(w.care), "select 1 from complaints")).length, 1);
     for (const who of [w.lb, w.tb, w.admin]) assert.equal((await as(db, user(who), "select 1 from complaints")).length, 0);
     await rejects(as(db, user(w.ta), "insert into complaints(tenancy_id,category,title) values ($1,'Water','For my neighbour')", [w.tB]), /row-level security/);
     await rejects(as(db, user(w.ta), "insert into complaints(tenancy_id,category,title,landlord_id) values ($1,'Water','Spoof',$2)", [w.tA, w.lb]), /permission denied/);
     assert.equal((await as(db, user(w.ta), "update complaints set status='resolved' where id=$1 returning id", [id])).length, 0);
-    await as(db, user(w.la), "update complaints set status='in_progress', assigned_to=$2 where id=$1", [id, w.care]);
+    await as(db, user(w.la), "update complaints set status='in_progress' where id=$1", [id]);
     assert.equal((await as(db, user(w.ta), "select status from complaints"))[0].status, "in_progress");
   });
   it("complaint messages are visible only to the people in that complaint, and cannot be forged", async () => {
@@ -279,7 +278,7 @@ describe("tenant features: complaints, emergency contact, notices", () => {
     assert.equal((await one(db, "select emergency_phone p from tenancies where id=$1", [w.tA])).p, "0733444555");
     assert.equal((await one(db, "select emergency_phone p from tenancies where id=$1", [w.tB])).p, "0722000002");   // other tenants untouched
     await rejects(as(db, user(w.ta), "select update_my_emergency_contact('Me','0711000001','self')"), /check constraint/);
-    await rejects(as(db, user(w.care), "select update_my_emergency_contact('X Y','0733444556','friend')"), /Tenancy not found/);
+    await rejects(as(db, user(w.admin), "select update_my_emergency_contact('X Y','0733444556','friend')"), /Tenancy not found/);
   });
   it("notices reach only the tenants of the landlord who posted them", async () => {
     await as(db, user(w.la), "insert into notices(landlord_id,title,body) values ($1,'Water shutdown','Thursday 9am to 1pm')", [w.la]);

@@ -3,7 +3,8 @@
 Project **hostel-new**, ref `gzhyorqbpvpoevaeiuvz`.
 
 Migrations, in order: `0001_core`, `0002_money`, `0003_access`, `0004_signup`, `0005_jobs`, `0006_onboarding`, `0007_storage`,
-`0008_admin`, `0009_features`, `0010_payment_plumbing`, `0011_caretakers_view`, `0012_landlord_email_verification`, `0013_public_viewing_requests`. Then `seed/seed.sql`, then `cron.sql`.
+`0008_admin`, `0009_features`, `0010_payment_plumbing`, `0011_caretakers_view`, `0012_landlord_email_verification`, `0013_public_viewing_requests`,
+`0014_subscription_extra_unit_price`, `0015_expand_town_catalog`, `0016_landlord_viewings`, `0017_remove_caretaker_feature`. The final migration removes caretaker access and invites while preserving old authentication profile rows. Then run `seed/seed.sql`, then `cron.sql`.
 
 ## Set up, in this order
 1. **Link and apply the database**

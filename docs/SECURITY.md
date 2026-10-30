@@ -7,12 +7,12 @@
 - Landlords cannot read or change each other's houses, tenants, payments, SMS, complaints or documents.
 - The admin cannot read tenancies, rent, the ledger, complaints or SMS recipients. Admin power needs a verified authenticator code, checked by the database itself.
 - Strangers can read only the public listings view: no landlord, phone, email or exact location. Full houses and locked landlords vanish from it.
-- Tenants see only their own tenancy, balance, payments and notices. Caretakers see only assigned houses, no money.
+- Tenants see only their own tenancy, balance, payments and notices.
 - A suspended or expired landlord is locked out, and so are their tenants.
 
 **Accounts**
-- Roles and account state cannot be self-edited. A user cannot choose a role at sign-up. Only the server creates tenant, caretaker and admin logins.
-- Tenant and caretaker phone codes are stored only as keyed hashes, limited per phone and per network address, burn after five wrong tries, and expire in five minutes. Landlords verify email and provide a phone number for M-Pesa prompts; landlord phone numbers are not OTP-verified.
+- Roles and account state cannot be self-edited. A user cannot choose a role at sign-up. Only the server creates tenant and admin logins.
+- Tenant phone codes are stored only as keyed hashes, limited per phone and per network address, burn after five wrong tries, and expire in five minutes. Landlords verify email and provide a phone number for M-Pesa prompts; landlord phone numbers are not OTP-verified.
 - Invite links carry a 256-bit secret stored only as a hash; they expire in 7 days and work once.
 - ID and KRA files: private storage, own folder only, only while documents are requested, 12 files, 5 MB, JPG/PNG/PDF, never editable or deletable, checked by their real contents.
 

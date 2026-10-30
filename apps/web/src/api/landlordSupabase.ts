@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
-  BroadcastResult, CaretakerItem, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
+  BroadcastResult, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
   PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
 } from "./types";
 
@@ -63,7 +63,7 @@ async function complaintItems(uid: string): Promise<ComplaintItem[]> {
     const tn = ten.get(c.tenancy_id as string);
     return {
       id: c.id as string, title: c.title as string, category: c.category as string, status: c.status as ComplaintItem["status"], priority: c.priority as string, at: c.created_at as string,
-      tenantName: (tn?.tenant_name as string) ?? "", unit: (tn?.unit_label as string) ?? "", houseTitle: title.get(tn?.house_id as string) ?? "", assignedTo: (c.assigned_to as string | null) ?? null,
+      tenantName: (tn?.tenant_name as string) ?? "", unit: (tn?.unit_label as string) ?? "", houseTitle: title.get(tn?.house_id as string) ?? "",
       messages: msgs.filter((x) => x.complaint_id === c.id).map((x) => ({ id: x.id as number, mine: x.author_id === uid, body: x.body as string, at: x.created_at as string })),
     };
   });
@@ -302,17 +302,6 @@ export const landlordApi: LandlordApi = {
     return data.signedUrl;
   },
   inviteTenant: (tenancyId) => callFunction<InviteResult>("invite-create", { kind: "tenant", tenancyId }),
-  inviteCaretaker: (houseId, name, phone) => callFunction<InviteResult>("invite-create", { kind: "caretaker", houseId, name, phone }),
-  async caretakers(): Promise<CaretakerItem[]> {
-    const { data, error } = await supabase.from("my_caretakers").select("*");
-    if (error) throw dbError(error);
-    return (data as Row[]).map((r) => ({ caretakerId: r.caretaker_id as string, name: (r.full_name as string) ?? "(not named yet)", phone: (r.phone as string | null) ?? null, houseId: r.house_id as string, houseTitle: r.house_title as string }));
-  },
-  async removeCaretaker(caretakerId, houseId) {
-    const { error } = await supabase.from("caretaker_assignments").delete().eq("caretaker_id", caretakerId).eq("house_id", houseId);
-    if (error) throw dbError(error);
-  },
-
   async payments(): Promise<PaymentsOverview> {
     const [l, t, h, p, d, a, b] = await Promise.all([
       supabase.from("ledger_entries").select("id, tenancy_id, kind, amount, method, provider_ref, receipt_no, reverses_id, created_at").order("created_at", { ascending: false }).limit(150),

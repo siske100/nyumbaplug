@@ -11,7 +11,7 @@ import { useLive, useLiveMutation } from "@/features/live";
 import { cn } from "@/lib/cn";
 import { fmtDate } from "@/lib/format";
 
-type Role = "landlord" | "caretaker" | "tenant";
+type Role = "landlord" | "tenant";
 const TONE = { open: "danger", in_progress: "ember", resolved: "ok" } as const;
 const LABEL = { open: "Open", in_progress: "In progress", resolved: "Resolved" } as const;
 const CATEGORIES = ["Water", "Electricity", "Plumbing", "Security", "Other"];

@@ -31,7 +31,7 @@ export function RequireRole({ role, children }: { role: Role; children: ReactNod
     if (!c) return <Onboarding session={session} />;
     return <Notice icon="lock" title={c.title} body={c.body} />;
   }
-  if ((role === "tenant" || role === "caretaker") && session.phoneVerified === false) return <PhoneGate session={session} />;
+  if (role === "tenant" && session.phoneVerified === false) return <PhoneGate session={session} />;
   if (role !== "landlord" && role !== "admin" && session.landlordOnHold) {
     return <Notice icon="lock" title="Your account is on hold" body="Please contact your landlord. Your records are kept safe." />;
   }

@@ -22,9 +22,10 @@ describe("sign-up and roles", () => {
     const id = await mkUser(db, "sneaky@x.ke", { meta: { role: "admin", invited_role: "admin" } });
     assert.equal((await sql(db, "select role from profiles where id=$1", [id]))[0].role, "landlord");
   });
-  it("only the server can invite an admin, tenant or caretaker", async () => {
+  it("only the server can invite an admin or tenant", async () => {
     const id = await mkUser(db, "adm@x.ke", { app: { invited_role: "admin" } });
     assert.equal((await sql(db, "select role from profiles where id=$1", [id]))[0].role, "admin");
+    await rejects(mkUser(db, "oldcare@x.ke", { app: { invited_role: "caretaker" } }), /Caretaker accounts are no longer supported/);
   });
   it("a user can rename themselves but never change their role or state", async () => {
     const id = await mkUser(db, "esc@x.ke");
@@ -98,12 +99,6 @@ describe("who can read what", () => {
     assert.equal((await as(db, user(w.ta), "update tenancies set rent_amount=1 where id=$1 returning id", [w.tA])).length, 0);
     assert.equal((await sql(db, "select rent_amount from tenancies where id=$1", [w.tA]))[0].rent_amount, 6500);
   });
-  it("a caretaker sees only assigned houses and no money", async () => {
-    assert.deepEqual((await as(db, user(w.care), "select id from tenancies")).map((r) => r.id), [w.tA]);
-    assert.deepEqual((await as(db, user(w.care), "select id from houses")).map((r) => r.id), [w.hA]);
-    assert.equal((await as(db, user(w.care), "select 1 from ledger_entries")).length, 0);
-    assert.equal((await as(db, user(w.care), "select 1 from charges")).length, 0);
-  });
   it("when a landlord is suspended, their dashboard data and their tenants' access lock", async () => {
     await sql(db, "update profiles set landlord_state='suspended' where id=$1", [w.la]);
     assert.equal((await as(db, user(w.la), "select 1 from houses")).length, 0);
@@ -135,7 +130,7 @@ describe("function privileges (a guard for every future migration)", () => {
   });
   it("a signed-in user can run only the reviewed list. Any new function must be added here on purpose", async () => {
     assert.deepEqual(await callable("authenticated"), [
-      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_suspend_landlord", "agreement_visible_to_me", "caretaker_has_house", "is_admin", "landlord_active", "price_for_units",
+      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_suspend_landlord", "agreement_visible_to_me", "is_admin", "landlord_active", "price_for_units",
       "resolve_held_payment", "reschedule_visit", "reverse_payment", "review_kyc", "set_my_phone", "set_payment_mode", "submit_kyc", "update_my_emergency_contact",
     ].sort());
   });

@@ -1,4 +1,4 @@
-import { Building2, CalendarDays, CreditCard, Grid2x2, LayoutGrid, MessageCircleWarning, MessageSquare, Megaphone, Receipt, Smartphone, UserCog, Users } from "lucide-react";
+import { Building2, CalendarDays, CreditCard, Grid2x2, LayoutGrid, MessageCircleWarning, MessageSquare, Megaphone, Receipt, Smartphone, Users } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { useLandlordSummary } from "@/features/landlord/hooks";
@@ -12,7 +12,6 @@ export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord/houses", label: "Houses", icon: Building2 },
   { to: "/landlord/visits", label: "Viewings", icon: CalendarDays },
   { to: "/landlord/tenants", label: "Tenants", icon: Users },
-  { to: "/landlord/caretakers", label: "Caretakers", icon: UserCog },
   { to: "/landlord/payments", label: "Payments", icon: Receipt },
   { to: "/landlord/mpesa", label: "M-Pesa setup", icon: Smartphone },
   { to: "/landlord/sms", label: "SMS", icon: MessageSquare },

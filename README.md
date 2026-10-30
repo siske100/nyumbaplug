@@ -3,7 +3,7 @@
 React + TypeScript + TanStack Query + Tailwind (orange and grey glass) on Supabase, with M-Pesa (Daraja) payments and Celcom SMS.
 
 ```
-apps/web          the website: public, landlord, tenant, caretaker and admin areas
+apps/web          the website: public, landlord, tenant and admin areas
 packages/shared   the rules shared by the website and the server
 supabase/         database migrations, server functions, scheduled jobs, 197 tests' worth of proof
 docs/             ARCHITECTURE, SECURITY, PAYMENTS, LAUNCH-CHECKLIST

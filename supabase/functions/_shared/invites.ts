@@ -1,17 +1,16 @@
-// Inviting tenants and caretakers, and accepting an invite.
+// Inviting tenants and accepting an invite.
 import { fromDb, HttpError, type Rpc } from "./ops.ts";
 import { sendLandlordSms, type SmsDeps } from "./messaging.ts";
 import { firstName, hmacHex, randomToken } from "./text.ts";
 
 export interface InviteDeps extends SmsDeps { appOrigin: string; pepper: string }
 
-export async function createInvite(d: InviteDeps, i: { landlordId: string; kind: unknown; tenancyId?: unknown; houseId?: unknown; name?: unknown; phone?: unknown }) {
-  if (i.kind !== "tenant" && i.kind !== "caretaker") throw new HttpError(400, "Choose tenant or caretaker");
+export async function createInvite(d: InviteDeps, i: { landlordId: string; kind: unknown; tenancyId?: unknown }) {
+  if (i.kind !== "tenant") throw new HttpError(400, "Choose tenant");
   const token = randomToken();
   const hash = await hmacHex(token, d.pepper);
   const made = await d.rpc("create_invite", {
-    p_landlord: i.landlordId, p_kind: i.kind, p_tenancy: i.kind === "tenant" ? i.tenancyId ?? null : null, p_house: i.kind === "caretaker" ? i.houseId ?? null : null,
-    p_name: typeof i.name === "string" ? i.name : null, p_phone: typeof i.phone === "string" ? i.phone : null, p_hash: hash,
+    p_landlord: i.landlordId, p_kind: i.kind, p_tenancy: i.tenancyId ?? null, p_hash: hash,
   });
   if (made.error) throw fromDb(made.error);
   const link = `${d.appOrigin}/invite/${token}`;

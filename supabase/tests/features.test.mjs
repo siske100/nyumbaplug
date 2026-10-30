@@ -8,7 +8,7 @@ const call = async (db, who, text, params = []) => (await as(db, who, text, para
 
 describe("invites", () => {
   let db, w, tN;
-  const invite = (hash, tenancy = tN, landlord = w.la) => as(db, server, "select create_invite($1,'tenant',$2,null,null,null,$3) e", [landlord, tenancy, hash]);
+  const invite = (hash, tenancy = tN, landlord = w.la) => as(db, server, "select create_invite($1,'tenant',$2,$3) e", [landlord, tenancy, hash]);
   before(async () => {
     db = await freshDb(); w = await buildWorld(db);
     tN = (await as(db, user(w.la), `insert into tenancies(landlord_id,house_id,unit_label,tenant_name,tenant_phone,emergency_name,emergency_phone,emergency_relationship,rent_amount,deposit_amount,due_day)
@@ -32,12 +32,8 @@ describe("invites", () => {
     await rejects(invite("hash-x", w.tA), /already joined/);
     await rejects(invite("hash-x", tN, w.lb), /Tenant not found/);
   });
-  it("a caretaker invite checks the house and the phone", async () => {
-    const inv = (house, phone, hash) => as(db, server, "select create_invite($1,'caretaker',null,$2,'Peter Mwangi',$3,$4) e", [w.la, house, phone, hash]);
-    await inv(w.hA, "+254 712 000 111", "care-1");
-    assert.equal((await as(db, server, "select invite_lookup('care-1') i"))[0].i.invitee_phone, "0712000111");
-    await rejects(inv(w.hA, "12345", "care-2"), /valid Kenyan phone/);
-    await rejects(inv(w.hB, "0712000111", "care-3"), /House not found/);
+  it("caretaker invites are no longer supported", async () => {
+    await rejects(as(db, server, "select create_invite($1,'caretaker',null,$2)", [w.la, "caretaker-hash"]), /Unknown invite type/);
   });
   it("accepting links the tenant to the tenancy, once, and only with the right kind of account", async () => {
     const newTenant = await mkUser(db, "newtenant@x.ke", { app: { invited_role: "tenant" } });
@@ -50,11 +46,6 @@ describe("invites", () => {
     assert.deepEqual(p, { phone: "0722111222", v: false });                  // the phone still has to be verified by code
     assert.equal((await as(db, user(newTenant), "select id from tenancies")).length, 1);
     await rejects(as(db, server, "select invite_accept('hash-2',$1)", [newTenant]), /no longer valid/);
-  });
-  it("caretakers are assigned to the house when they accept", async () => {
-    const c = await mkUser(db, "newcare@x.ke", { app: { invited_role: "caretaker" } });
-    await as(db, server, "select invite_accept('care-1',$1)", [c]);
-    assert.deepEqual((await as(db, user(c), "select id from houses")).map((r) => r.id), [w.hA]);
   });
   it("expired invites and invites from locked landlords stop working", async () => {
     await sql(db, "update tenancies set tenant_user_id = null where id=$1", [w.tB]);
@@ -353,16 +344,12 @@ describe("payment plumbing", () => {
   });
 });
 
-describe("caretaker list", () => {
-  it("a landlord sees their own caretakers with names, and other landlords see none", async () => {
+describe("caretaker feature removal", () => {
+  it("caretaker assignments, views and access helpers are removed", async () => {
     const db = await freshDb(); const w = await buildWorld(db);
-    await sql(db, "update profiles set full_name='Peter Mwangi', phone='0723000111' where id=$1", [w.care]);
-    const mine = await as(db, user(w.la), "select * from my_caretakers");
-    assert.deepEqual(mine.map((r) => ({ n: r.full_name, h: r.house_title })), [{ n: "Peter Mwangi", h: "Block A" }]);
-    assert.equal(await count(db, user(w.lb), "my_caretakers"), 0);
-    assert.equal(await count(db, user(w.ta), "my_caretakers"), 0);
-    assert.equal(await count(db, user(w.admin), "my_caretakers"), 0);
-    await sql(db, "update profiles set landlord_state='suspended' where id=$1", [w.la]);
-    assert.equal(await count(db, user(w.la), "my_caretakers"), 0);
+    assert.equal((await sql(db, "select to_regclass('public.caretaker_assignments') relation"))[0].relation, null);
+    assert.equal((await sql(db, "select to_regclass('public.my_caretakers') relation"))[0].relation, null);
+    assert.equal((await sql(db, "select to_regprocedure('public.caretaker_has_house(uuid)') function"))[0].function, null);
+    assert.deepEqual(await as(db, user(w.la), "select id from tenancies"), [ { id: w.tA } ]);
   });
 });

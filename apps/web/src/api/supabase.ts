@@ -16,6 +16,10 @@ async function adminMfaState(): Promise<"ok" | "enroll" | "challenge"> {
   return (f?.totp?.length ?? 0) > 0 ? "challenge" : "enroll";   // totp lists only verified factors
 }
 
+function isRole(role: string): role is Role {
+  return role === "landlord" || role === "tenant" || role === "admin";
+}
+
 async function loadSession(): Promise<Session | null> {
   const { data: auth } = await supabase.auth.getSession();
   const user = auth.session?.user;
@@ -24,9 +28,13 @@ async function loadSession(): Promise<Session | null> {
     .select("id, role, full_name, email, phone, phone_verified, landlord_state").eq("id", user.id).single();
   if (error || !p) throw dbError(error ?? { message: "no profile", code: "PGRST301" });
 
-  const role = p.role as Role;
+  if (!isRole(p.role)) {
+    await supabase.auth.signOut();
+    throw new ApiError(403, "This account type is no longer supported. Contact customer care for help.");
+  }
+  const role = p.role;
   let onHold = false;
-  if (role === "tenant" || role === "caretaker") {
+  if (role === "tenant") {
     // The database hides a tenancy from its tenant when the landlord is expired or suspended.
     const { count } = await supabase.from("tenancies").select("id", { count: "exact", head: true });
     onHold = (count ?? 0) === 0;

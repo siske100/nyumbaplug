@@ -19,7 +19,7 @@ export default function About() {
         <p className="text-sm font-medium uppercase tracking-[0.16em] text-ember-300">About the service</p>
         <h2 className="text-3xl">Rental Houses Kenya</h2>
         <p className="max-w-3xl leading-7 text-graphite-200">
-          A rental discovery and property-management platform operated by Referraliq Solutions. People can browse vacant rental listings across Kenya without signing in, compare rent and property details, and request a viewing. Landlords can publish available houses and manage viewing requests, tenants, rent records, notices and tenant SMS. Invited tenants and caretakers can use their account areas to manage tenancy-related tasks.
+          A rental discovery and property-management platform operated by Referraliq Solutions. People can browse vacant rental listings across Kenya without signing in, compare rent and property details, and request a viewing. Landlords can publish available houses and manage viewing requests, tenants, rent records, notices and tenant SMS. Invited tenants can use their account areas to manage tenancy-related tasks.
         </p>
       </Panel>
 
@@ -34,9 +34,9 @@ export default function About() {
           <p className="text-sm leading-6 text-graphite-300">Create a landlord account, submit details for review, publish available houses, manage tenants and payment records, and choose whether rent goes to the platform Paybill or your own connected Paybill. Google sign-in uses basic Google account information to create or access your landlord account; it does not access Gmail, Drive or contacts.</p>
           <Link to="/sign-up" className="mt-1 text-sm text-ember-300 underline-offset-4 hover:underline">Create a landlord account</Link>
         </Panel>
-        <Panel id="for-tenants-caretakers" className="grid scroll-mt-24 content-start gap-2 p-5">
-          <h2 className="text-xl">For tenants and caretakers</h2>
-          <p className="text-sm leading-6 text-graphite-300">Landlords invite tenants and caretakers. Depending on the role, invited users can access tenancy information, rent payments, documents, notices, complaints or assigned property tasks.</p>
+        <Panel id="for-tenants" className="grid scroll-mt-24 content-start gap-2 p-5">
+          <h2 className="text-xl">For tenants</h2>
+          <p className="text-sm leading-6 text-graphite-300">Landlords invite tenants to access tenancy information, rent payments, documents, notices and complaints.</p>
         </Panel>
       </div>
 
