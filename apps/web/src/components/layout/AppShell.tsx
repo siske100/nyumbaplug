@@ -63,7 +63,7 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
       {menuOpen && (
         <div className="fixed inset-0 z-30 md:hidden">
           <button type="button" className="absolute inset-0 size-full bg-black/60" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />
-          <aside id="mobile-navigation" className="glass absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto rounded-none rounded-r-2xl bg-graphite-950/70 p-4 pt-16 shadow-2xl" aria-label="Mobile navigation">
+          <aside id="mobile-navigation" className="glass absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto rounded-none rounded-r-2xl p-4 pt-16 shadow-2xl" style={{ background: "rgb(13 13 15 / 0.95)" }} aria-label="Mobile navigation">
             <div className="mb-6 flex items-center justify-between gap-2.5 px-1">
               <div className="flex items-center gap-2.5">
                 <span className="grid size-8 place-items-center rounded-lg bg-ember-500 text-graphite-950"><Home className="size-4.5" aria-hidden /></span>
