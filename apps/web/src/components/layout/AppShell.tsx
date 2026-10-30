@@ -47,11 +47,7 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
         </aside>
 
         <div className="min-w-0">
-          <div className="mb-4 flex items-center justify-between md:hidden">
-            <button type="button" className="glass-quiet flex items-center gap-2 px-3 py-2 text-sm text-graphite-200" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
-              {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
-              {menuOpen ? "Close menu" : "Menu"}
-            </button>
+          <div className="mb-4 flex justify-end md:hidden">
             <button onClick={() => signOut.mutate()} className="glass-quiet flex items-center gap-2 px-3 py-2 text-sm text-graphite-200"><LogOut className="size-4" aria-hidden />Sign out</button>
           </div>
           <p className="sr-only">Signed in as {session?.name}</p>
@@ -59,10 +55,15 @@ export function AppShell({ items, railFooter }: { items: NavItem[]; railFooter?:
         </div>
       </div>
 
+      <button type="button" className="glass-quiet fixed left-3 top-3 z-50 flex items-center gap-2 px-3 py-2 text-sm text-graphite-200 md:hidden" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
+        {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
+        {menuOpen ? "Close menu" : "Menu"}
+      </button>
+
       {menuOpen && (
         <div className="fixed inset-0 z-30 md:hidden">
           <button type="button" className="absolute inset-0 size-full bg-black/60" aria-label="Close navigation menu" onClick={() => setMenuOpen(false)} />
-          <aside id="mobile-navigation" className="glass absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto rounded-none rounded-r-2xl p-4 shadow-2xl" aria-label="Mobile navigation">
+          <aside id="mobile-navigation" className="glass absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto rounded-none rounded-r-2xl bg-graphite-950/70 p-4 pt-16 shadow-2xl" aria-label="Mobile navigation">
             <div className="mb-6 flex items-center justify-between gap-2.5 px-1">
               <div className="flex items-center gap-2.5">
                 <span className="grid size-8 place-items-center rounded-lg bg-ember-500 text-graphite-950"><Home className="size-4.5" aria-hidden /></span>
