@@ -9,7 +9,7 @@ Everything below needs a live account, so it could not be proved in the build en
 - [ ] Ask Safaricom to enable **external validation** on the Paybill, so wrong manual amounts are refused up front. Without it, wrong amounts are still held safely, not credited.
 - [ ] Optional but recommended: set `DARAJA_ALLOWED_IPS`-style filtering at your host or firewall to Safaricom's published callback addresses. The app already refuses callbacks it cannot confirm with Safaricom.
 - [ ] Ask a lawyer whether holding landlords' rent on the platform Paybill needs a licence or partnership. Landlords who connect their own Paybill avoid this.
-- [ ] Have a lawyer review the standard tenancy agreement text (`pages/landlord/AgreementPrint.tsx`), the terms of use and a privacy notice. Register under the Kenya Data Protection Act.
+- [ ] Landlords upload their own tenancy agreements for tenants. Have a lawyer review the agreement landlords use, the terms of use and a privacy notice. Register under the Kenya Data Protection Act.
 
 ## Must verify on a real Supabase stack
 - [ ] Run `npm run test:db` against the real stack (`supabase start`) or a staging project.

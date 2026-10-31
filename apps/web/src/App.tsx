@@ -21,7 +21,7 @@ const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
   Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")),
   Payments: lazy(() => import("@/pages/landlord/Payments")), Mpesa: lazy(() => import("@/pages/landlord/MpesaSetup")), Sms: lazy(() => import("@/pages/landlord/Sms")),
-  Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")), Agreement: lazy(() => import("@/pages/landlord/AgreementPrint")),
+  Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")),
 };
 const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy(() => import("@/pages/tenant/Pay")), Documents: lazy(() => import("@/pages/tenant/Documents")) };
 const A = {
@@ -60,8 +60,6 @@ export default function App() {
           <Route path="notices" element={<NoticesView role="landlord" />} />
           <Route path="more" element={<L.More />} />
         </Route>
-        <Route path="/landlord/agreement/:id" element={<RequireRole role="landlord"><L.Agreement /></RequireRole>} />
-
         <Route path="/tenant" element={<RequireRole role="tenant"><T.Layout /></RequireRole>}>
           <Route index element={<T.Pay />} />
           <Route path="complaints" element={<ComplaintsView role="tenant" />} />

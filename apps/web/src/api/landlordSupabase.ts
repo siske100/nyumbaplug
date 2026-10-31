@@ -41,7 +41,7 @@ async function tenancyRows(): Promise<TenancyRow[]> {
     id: r.id as string, houseId: r.house_id as string, houseTitle: title.get(r.house_id as string) ?? "", unit: r.unit_label as string, name: r.tenant_name as string,
     phone: r.tenant_phone as string, emergencyName: r.emergency_name as string, emergencyPhone: r.emergency_phone as string, emergencyRelationship: r.emergency_relationship as string,
     rent: num(r.rent_amount), deposit: num(r.deposit_amount), dueDay: num(r.due_day), status: r.status as TenancyRow["status"], code: r.tenancy_code as string, joined: r.tenant_user_id != null,
-    agreementPrintedOn: (r.agreement_printed_on as string | null) ?? null, agreementSignedOn: (r.agreement_signed_on as string | null) ?? null, agreementPath: (r.agreement_file_path as string | null) ?? null,
+    agreementSignedOn: (r.agreement_signed_on as string | null) ?? null, agreementPath: (r.agreement_file_path as string | null) ?? null,
     electricityEnabled: Boolean(r.electricity_enabled), kplcPaybill: (r.kplc_paybill as string | null) ?? null, meterNumber: (r.meter_number as string | null) ?? null, balance: bal.get(r.id as string) ?? 0,
   }));
 }
@@ -278,7 +278,6 @@ export const landlordApi: LandlordApi = {
   },
   async updateTenancy(id, p) {
     const u: Row = {};
-    if (p.agreementPrintedOn !== undefined) u.agreement_printed_on = p.agreementPrintedOn;
     if (p.agreementSignedOn !== undefined) u.agreement_signed_on = p.agreementSignedOn;
     if (p.electricityEnabled !== undefined) u.electricity_enabled = p.electricityEnabled;
     if (p.kplcPaybill !== undefined) u.kplc_paybill = p.kplcPaybill;

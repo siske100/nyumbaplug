@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { tenantSchema } from "@rh/shared";
 import type { InviteResult, TenancyRow } from "@/api/types";
 import { api } from "@/api";
@@ -74,7 +73,7 @@ function Detail({ t }: { t: TenancyRow }) {
   const [msg, setMsg] = useState<string>();
 
   const openAgreement = async () => { if (t.agreementPath) window.open(await api.landlord.fileUrl("agreements", t.agreementPath), "_blank", "noopener,noreferrer"); };
-  const agreement = t.agreementPath ? "Signed copy uploaded" : t.agreementSignedOn ? "Signed on paper" : t.agreementPrintedOn ? "Printed" : "Not printed";
+  const agreement = t.agreementPath ? "Agreement uploaded" : "No agreement uploaded";
 
   return (
     <div className="grid gap-5 border-t border-white/8 p-5">
@@ -103,17 +102,15 @@ function Detail({ t }: { t: TenancyRow }) {
       )}
 
       <div className="grid gap-3 rounded-xl border border-white/10 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg">Tenancy agreement</h3><Chip tone={t.agreementPath || t.agreementSignedOn ? "ok" : "neutral"}>{agreement}</Chip></div>
-        <p className="text-sm text-graphite-300">Print the day before entry, sign when the deposit is paid, and each keep a paper copy. Uploading a scan is optional and lets the tenant download it too.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg">Tenancy agreement</h3><Chip tone={t.agreementPath ? "ok" : "neutral"}>{agreement}</Chip></div>
+        <p className="text-sm text-graphite-300">Upload your own tenancy agreement (PDF, JPG or PNG, up to 5 MB). The tenant can download it from their Documents page. No default agreement template is provided.</p>
         <div className="flex flex-wrap gap-2">
-          <Link to={`/landlord/agreement/${t.id}`}><Button variant="glass" size="sm">Open printable agreement</Button></Link>
-          {!t.agreementPrintedOn && <Button variant="ghost" size="sm" onClick={() => update.mutate({ agreementPrintedOn: todayIso() })}>Mark as printed</Button>}
           {!t.agreementSignedOn && <Button variant="ghost" size="sm" onClick={() => update.mutate({ agreementSignedOn: todayIso() })}>Mark as signed today</Button>}
-          {t.agreementPath && <Button variant="ghost" size="sm" onClick={() => void openAgreement()}>Download scan</Button>}
+          {t.agreementPath && <Button variant="ghost" size="sm" onClick={() => void openAgreement()}>Download agreement</Button>}
         </div>
-        {(t.agreementPrintedOn || t.agreementSignedOn) && <p className="text-sm text-graphite-400">{t.agreementPrintedOn && `Printed ${fmtDate(t.agreementPrintedOn)}. `}{t.agreementSignedOn && `Signed ${fmtDate(t.agreementSignedOn)}.`}</p>}
-        <FileField label="Upload a scan of the signed copy (optional)" file={scan} onPick={setScan} />
-        {scan && <div><Button size="sm" loading={upload.isPending} onClick={() => upload.mutate(scan, { onSuccess: () => { setScan(null); setMsg("Scan uploaded."); } })}>Upload scan</Button></div>}
+        {t.agreementSignedOn && <p className="text-sm text-graphite-400">Signed {fmtDate(t.agreementSignedOn)}.</p>}
+        <FileField label={t.agreementPath ? "Replace uploaded agreement" : "Upload your tenancy agreement"} hint="The uploaded document will be available to the tenant." file={scan} onPick={setScan} />
+        {scan && <div><Button size="sm" loading={upload.isPending} onClick={() => upload.mutate(scan, { onSuccess: () => { setScan(null); setMsg("Agreement uploaded."); } })}>{t.agreementPath ? "Replace agreement" : "Upload agreement"}</Button></div>}
         <ErrorNote error={upload.error} />
       </div>
 

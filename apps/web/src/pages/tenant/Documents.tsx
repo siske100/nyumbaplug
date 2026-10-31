@@ -39,9 +39,9 @@ export default function Documents() {
       <PageHead title="Documents" sub="Your tenancy papers and details." />
       <ErrorNote error={home.error} />
       <Panel className="grid gap-3 p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl">Tenancy agreement</h2>{t?.agreementPath ? <Chip tone="ok">Scan available</Chip> : t?.agreementSignedOn ? <Chip tone="ok">Signed on paper</Chip> : <Chip>Not signed yet</Chip>}</div>
-        {t?.agreementSignedOn && <p className="text-graphite-300">Signed on {fmtDate(t.agreementSignedOn)}. Keep your paper copy safe.</p>}
-        {t?.agreementPath ? <div><Button variant="glass" loading={opening} onClick={() => void open()}>Download the signed copy</Button></div> : <p className="text-graphite-300">{t?.agreementSignedOn ? "Your landlord has not uploaded a scan. Your signed paper copy is your record." : "Your agreement is printed the day before you move in and signed when you pay the deposit."}</p>}
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl">Tenancy agreement</h2>{t?.agreementPath ? <Chip tone="ok">Agreement uploaded</Chip> : <Chip>Not uploaded</Chip>}</div>
+        {t?.agreementSignedOn && <p className="text-graphite-300">Signed on {fmtDate(t.agreementSignedOn)}.</p>}
+        {t?.agreementPath ? <div><Button variant="glass" loading={opening} onClick={() => void open()}>Download agreement</Button></div> : <p className="text-graphite-300">{t?.agreementSignedOn ? "Your landlord has not uploaded the agreement. Keep your signed paper copy safe and contact your landlord if you need a digital copy." : "Your landlord has not uploaded a tenancy agreement yet. Please contact them for a copy."}</p>}
         {problem && <p role="alert" className="text-sm text-danger">{problem}</p>}
       </Panel>
       <Panel className="grid gap-3 p-5 sm:p-6">

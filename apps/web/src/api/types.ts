@@ -117,11 +117,11 @@ export interface HouseForEdit { input: HouseInput; photos: { path: string; url: 
 export interface TenancyRow {
   id: string; houseId: string; houseTitle: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
   rent: number; deposit: number; dueDay: number; status: "active" | "notice" | "ended"; code: string; joined: boolean;
-  agreementPrintedOn: string | null; agreementSignedOn: string | null; agreementPath: string | null;
+  agreementSignedOn: string | null; agreementPath: string | null;
   electricityEnabled: boolean; kplcPaybill: string | null; meterNumber: string | null; balance: number;
 }
 export interface TenantInput { houseId: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string; rent: number; deposit: number; dueDay: number }
-export interface TenancyPatch { agreementPrintedOn?: string | null; agreementSignedOn?: string | null; electricityEnabled?: boolean; kplcPaybill?: string | null; meterNumber?: string | null }
+export interface TenancyPatch { agreementSignedOn?: string | null; electricityEnabled?: boolean; kplcPaybill?: string | null; meterNumber?: string | null }
 export interface InviteResult { link: string; smsSent: boolean; expiresAt: string }
 export interface VisitItem {
   id: string; visitorName: string; visitorPhone: string; houseTitle: string; preferredDate: string; timeWindow: string;
