@@ -22,6 +22,7 @@
 - A callback is believed only if its secret address matches, it matches a prompt we sent, and Safaricom confirms it when we ask directly.
 - Rent paid to the wrong Paybill is refused or held: a landlord on the platform Paybill is never paid into someone's own Paybill, and the reverse.
 - Landlord Daraja keys are tested with Safaricom, then stored encrypted (AES-256-GCM, bound to that landlord). No browser can read them, and the callback secret is never shown.
+- Bank account details are protected by landlord-scoped row-level security. A landlord must confirm a small test-payment receipt before the bank Paybill route can be selected; that confirmation is an attestation, not an independent provider verification.
 - A payout can be created once per ledger entry and cannot include reversed payments.
 - At zero SMS balance a message fails and nothing is charged; a rejected message is refunded once.
 

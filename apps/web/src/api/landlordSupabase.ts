@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
-  BroadcastResult, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
+  BankPaymentSetup, BroadcastResult, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
   PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
 } from "./types";
 
@@ -321,7 +321,7 @@ export const landlordApi: LandlordApi = {
       held: (ok(h) as Row[]).map((r): HeldPayment => ({ id: r.id as string, amount: num(r.amount), billRef: (r.bill_ref as string | null) ?? null, reason: r.reason as string, at: r.created_at as string, ref: r.provider_ref as string })),
       payouts: (ok(p) as Row[]).map((r): PayoutRow => ({ id: r.id as string, amount: num(r.amount), status: r.status as string, destination: r.destination as string, at: r.created_at as string, paidAt: (r.paid_at as string | null) ?? null, ref: (r.provider_ref as string | null) ?? null })),
       destination: dest ? { kind: dest.kind as "mpesa_phone" | "bank_paybill", destination: dest.destination as string, accountRef: (dest.account_ref as string | null) ?? null, verified: Boolean(dest.verified) } : null,
-      mode: ((ok(a) as Row | null)?.mode as "platform" | "own") ?? "platform",
+      mode: ((ok(a) as Row | null)?.mode as PaymentAccount["mode"]) ?? "platform",
       owed: (ok(b) as Row[]).reduce((s, r) => s + Math.max(0, num(r.balance)), 0),
     };
   },
@@ -339,7 +339,37 @@ export const landlordApi: LandlordApi = {
   async paymentAccount(): Promise<PaymentAccount> {
     const { data, error } = await supabase.from("payment_accounts").select("mode, shortcode, status, failure_reason").maybeSingle();
     if (error || !data) throw dbError(error ?? { message: "x", code: "PGRST116" });
-    return { mode: data.mode, shortcode: data.shortcode, status: data.status, failureReason: data.failure_reason };
+    return {
+      mode: data.mode, shortcode: data.shortcode, status: data.status, failureReason: data.failure_reason,
+    };
+  },
+  async bankPaymentSetup(): Promise<BankPaymentSetup> {
+    const [banksResult, accountResult] = await Promise.all([
+      supabase.from("banks").select("id, name, paybill").eq("active", true).order("name"),
+      supabase.from("landlord_bank_accounts").select("bank_id, account_number, verified, test_payment_receipt, verified_at").maybeSingle(),
+    ]);
+    const banks = ok(banksResult) as Row[];
+    const account = ok(accountResult) as Row | null;
+    return {
+      banks: banks.map((bank) => ({ id: num(bank.id), name: bank.name as string, paybill: bank.paybill as string })),
+      account: account ? {
+        bankId: num(account.bank_id),
+        accountNumber: (account.account_number as string | null) ?? null,
+        verified: Boolean(account.verified),
+        testPaymentReceipt: (account.test_payment_receipt as string | null) ?? null,
+        verifiedAt: (account.verified_at as string | null) ?? null,
+      } : null,
+    };
+  },
+  async saveBankPaymentAccount(bankId, accountNumber) {
+    const { data, error } = await supabase.rpc("save_landlord_bank_account", { p_bank_id: bankId, p_account_number: accountNumber });
+    if (error) throw dbError(error);
+    if (data !== "saved" && data !== "reenter_account_number") throw new ApiError(500, "The bank account could not be saved");
+    return data;
+  },
+  async confirmBankPaymentTest(receipt) {
+    const { error } = await supabase.rpc("confirm_landlord_bank_account_test", { p_receipt: receipt });
+    if (error) throw dbError(error);
   },
   connectDaraja: (input) => callFunction("payments-connect", input as unknown as Record<string, unknown>),
   async setPaymentMode(mode) { const { error } = await supabase.rpc("set_payment_mode", { p_mode: mode }); if (error) throw dbError(error); },

@@ -130,8 +130,8 @@ describe("function privileges (a guard for every future migration)", () => {
   });
   it("a signed-in user can run only the reviewed list. Any new function must be added here on purpose", async () => {
     assert.deepEqual(await callable("authenticated"), [
-      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_suspend_landlord", "agreement_visible_to_me", "is_admin", "landlord_active", "price_for_units",
-      "resolve_held_payment", "reschedule_visit", "reverse_payment", "review_kyc", "set_my_phone", "set_payment_mode", "submit_kyc", "update_my_emergency_contact",
+      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_suspend_landlord", "agreement_visible_to_me", "confirm_landlord_bank_account_test", "is_admin", "landlord_active", "price_for_units",
+      "resolve_held_payment", "reschedule_visit", "reverse_payment", "review_kyc", "save_landlord_bank_account", "set_my_phone", "set_payment_mode", "submit_kyc", "tenant_payment_route", "update_my_emergency_contact",
     ].sort());
   });
   it("functions that bypass row-level security cannot be used to peek at other people's data", async () => {

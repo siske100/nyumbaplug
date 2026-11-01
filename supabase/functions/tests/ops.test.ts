@@ -26,12 +26,13 @@ const OWN: DarajaCreds = { consumerKey: "ok", consumerSecret: "os", shortcode: "
 function mkDaraja(over: Partial<Daraja> = {}) {
   const pushes: { creds: DarajaCreds; req: Record<string, unknown> }[] = [];
   const queried: string[] = [];
+  const queryCreds: DarajaCreds[] = [];
   const d: Daraja = {
     token: async () => "T", registerC2b: async () => {},
     stkPush: async (creds, req) => { pushes.push({ creds, req: req as unknown as Record<string, unknown> }); return { checkoutRequestId: "ws_CO_1", merchantRequestId: "mr1" }; },
-    stkQuery: async (_c, id) => { queried.push(id); return { resultCode: 0, resultDesc: "ok" }; }, ...over,
+    stkQuery: async (creds, id) => { queryCreds.push(creds); queried.push(id); return { resultCode: 0, resultDesc: "ok" }; }, ...over,
   };
-  return { d, pushes, queried };
+  return { d, pushes, queried, queryCreds };
 }
 function payDeps(f: ReturnType<typeof fake>, dj: Daraja, notified: string[] = [], over: Partial<ConnectDeps> = {}): ConnectDeps {
   return { rpc: f.rpc, daraja: dj, env: { platform: PLATFORM, platformToken: "PLATFORMTOKEN", functionsUrl: "https://x.supabase.co/functions/v1" },
@@ -63,6 +64,25 @@ Deno.test("tenant pays: a landlord with a connected own Paybill gets the rent in
   await tenantPay(payDeps(f, d), { tenancyId: "t", landlordId: "l1", tenancyCode: "ZZ99", phone: "0712345678" });
   eq(pushes[0]!.creds, OWN);
   eq(pushes[0]!.req.callbackUrl, "https://x.supabase.co/functions/v1/daraja-stk-callback/LLTOKEN");
+});
+
+Deno.test("tenant pays: bank Paybill uses the configured receiving shortcode and full account reference", async () => {
+  const accountNumber = "1234567890123456789012345678901234567890";
+  const f = fake({
+    current_balance: () => ({ data: 6500 }),
+    tenant_bank_paybill: () => ({ data: [{ paybill: "523456", account_number: accountNumber }] }),
+    start_payment_attempt: () => ({ data: "bank-attempt" }),
+    bind_bank_paybill_attempt: () => ({}),
+    get_payment_credentials: platformAccount,
+  });
+  const { d, pushes } = mkDaraja();
+  await tenantPay(payDeps(f, d), {
+    tenancyId: "t", landlordId: "l1", tenancyCode: "TENANT01", phone: "0712345678", paymentMode: "bank_paybill",
+  });
+  eq(pushes[0]!.creds, { ...PLATFORM, shortcode: "523456" });
+  eq(pushes[0]!.req.amount, 6500);
+  eq(pushes[0]!.req.accountRef, accountNumber);
+  eq(f.last("bind_bank_paybill_attempt"), { p_attempt: "bank-attempt", p_paybill: "523456" });
 });
 
 Deno.test("tenant pays: a broken own connection stops the payment instead of sending rent to the wrong place", async () => {
@@ -116,6 +136,19 @@ Deno.test("callback: a successful payment is checked with Safaricom, credited on
   eq(queried, ["ws_CO_1"]);
   eq(f.last("confirm_payment"), { p_checkout: "ws_CO_1", p_receipt: "NLJ7RT61SV", p_amount: 6500, p_msisdn: "254712345678" });
   eq(notified, ["ledger-9"]);
+});
+
+Deno.test("callback: bank Paybill verifies against the shortcode saved on the payment attempt", async () => {
+  const f = fake({
+    attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending", bank_paybill_shortcode: "523456" } }),
+    confirm_payment: () => ({ data: "bank-ledger" }),
+  });
+  const notified: string[] = [];
+  const { d, queryCreds } = mkDaraja();
+  await handleStkCallback(payDeps(f, d, notified), "PLATFORMTOKEN", cb());
+  eq(queryCreds, [{ ...PLATFORM, shortcode: "523456" }]);
+  eq(f.last("confirm_payment"), { p_checkout: "ws_CO_1", p_receipt: "NLJ7RT61SV", p_amount: 6500, p_msisdn: "254712345678" });
+  eq(notified, ["bank-ledger"]);
 });
 
 Deno.test("callback: a forged success that Safaricom does not confirm credits nothing", async () => {
@@ -216,7 +249,7 @@ Deno.test("reconcile: silent prompts are settled from Safaricom's answer, and on
     { kind: "tenant", id: "1", landlord_id: "l1", checkout: "c-paid", amount: 6500 }, { kind: "tenant", id: "2", landlord_id: "l1", checkout: "c-cancel", amount: 6500 },
     { kind: "platform", id: "3", landlord_id: "l1", checkout: "c-wait", amount: 1000 }, { kind: "platform", id: "4", landlord_id: "l1", checkout: "c-boom", amount: 1000 },
   ];
-  const f = fake({ expire_old_attempts: () => ({ data: 2 }), pending_attempts: () => ({ data: rows }), get_payment_credentials: platformAccount, confirm_payment: () => ({ data: "led-1" }) });
+  const f = fake({ expire_old_attempts: () => ({ data: 2 }), pending_stk_attempts: () => ({ data: rows }), get_payment_credentials: platformAccount, confirm_payment: () => ({ data: "led-1" }) });
   const notified: string[] = [];
   const { d } = mkDaraja({ stkQuery: async (_c, id) => { if (id === "c-boom") throw new Error("down"); return id === "c-paid" ? { resultCode: 0, resultDesc: "" } : id === "c-cancel" ? { resultCode: 1032, resultDesc: "cancelled" } : { resultCode: -1, resultDesc: "" }; } });
   const out = await reconcilePending(payDeps(f, d, notified));
@@ -224,6 +257,20 @@ Deno.test("reconcile: silent prompts are settled from Safaricom's answer, and on
   eq(out, { confirmed: 1, failed: 1, waiting: 1, errors: 1, timedOut: 2 });
   eq(f.last("confirm_payment")!.p_receipt, "STKQ-c-paid"); eq(notified, ["led-1"]);
   eq(f.last("fail_payment_attempt")!.p_code, 1032);
+});
+
+Deno.test("reconcile: bank Paybill retries use the saved receiving shortcode", async () => {
+  const rows = [{ kind: "tenant", id: "1", landlord_id: "l1", checkout: "bank-open", amount: 6500, bank_paybill_shortcode: "523456" }];
+  const f = fake({
+    expire_old_attempts: () => ({ data: 0 }),
+    pending_stk_attempts: () => ({ data: rows }),
+    confirm_payment: () => ({ data: "bank-ledger" }),
+  });
+  const notified: string[] = [];
+  const { d, queryCreds } = mkDaraja();
+  eq(await reconcilePending(payDeps(f, d, notified)), { confirmed: 1, failed: 0, waiting: 0, errors: 0, timedOut: 0 });
+  eq(queryCreds, [{ ...PLATFORM, shortcode: "523456" }]);
+  eq(notified, ["bank-ledger"]);
 });
 
 // ---------------- SMS ----------------

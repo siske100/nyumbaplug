@@ -110,7 +110,7 @@ export interface Api {
 }
 
 // ---------------- landlord, tenant and public data ----------------
-export type PaymentMode = "platform" | "own";
+export type PaymentMode = "platform" | "own" | "bank_paybill";
 export interface Place { counties: { id: number; name: string }[]; towns: { id: number; countyId: number; name: string }[] }
 export interface HouseInput { title: string; countyId: number; townId: number; type: HouseType; rent: number; deposit: number; total: number; vacant: number; amenities: string[]; rules: string; electricityNote: string }
 export interface HouseForEdit { input: HouseInput; photos: { path: string; url: string }[] }
@@ -132,7 +132,12 @@ export interface LedgerRow { id: string; tenancyId: string; tenantName: string; 
 export interface HeldPayment { id: string; amount: number; billRef: string | null; reason: string; at: string; ref: string }
 export interface PayoutRow { id: string; amount: number; status: string; destination: string; at: string; paidAt: string | null; ref: string | null }
 export interface PaymentsOverview { ledger: LedgerRow[]; held: HeldPayment[]; payouts: PayoutRow[]; destination: { kind: "mpesa_phone" | "bank_paybill"; destination: string; accountRef: string | null; verified: boolean } | null; mode: PaymentMode; owed: number }
-export interface PaymentAccount { mode: PaymentMode; shortcode: string | null; status: "not_connected" | "verifying" | "connected" | "failed"; failureReason: string | null }
+export interface PaymentAccount {
+  mode: PaymentMode; shortcode: string | null; status: "not_connected" | "verifying" | "connected" | "failed"; failureReason: string | null;
+}
+export interface BankOption { id: number; name: string; paybill: string }
+export interface LandlordBankAccount { bankId: number; accountNumber: string | null; verified: boolean; testPaymentReceipt: string | null; verifiedAt: string | null }
+export interface BankPaymentSetup { banks: BankOption[]; account: LandlordBankAccount | null }
 export interface DarajaInput { shortcode: string; consumerKey: string; consumerSecret: string; passkey: string }
 export interface SmsMessage { id: string; recipient: string; body: string; segments: number; cost: number; status: string; template: string; at: string }
 export interface SmsOverview { balance: number; messages: SmsMessage[]; triggers: string[]; lastRecharge: { status: string; amount: number; at: string } | null }
@@ -166,6 +171,9 @@ export interface LandlordApi {
   reversePayment(entryId: string, reason: string): Promise<void>;
   savePayoutDestination(kind: "mpesa_phone" | "bank_paybill", destination: string, accountRef: string | null): Promise<void>;
   paymentAccount(): Promise<PaymentAccount>;
+  bankPaymentSetup(): Promise<BankPaymentSetup>;
+  saveBankPaymentAccount(bankId: number, accountNumber: string | null): Promise<"saved" | "reenter_account_number">;
+  confirmBankPaymentTest(receipt: string): Promise<void>;
   connectDaraja(input: DarajaInput): Promise<{ status: "connected" | "failed"; reason?: string }>;
   setPaymentMode(mode: PaymentMode): Promise<void>;
   sms(): Promise<SmsOverview>;
@@ -183,9 +191,10 @@ export interface LandlordApi {
 export interface TenantHome {
   tenancy: { id: string; houseTitle: string; unit: string; rent: number; dueDay: number; code: string; agreementPath: string | null; agreementSignedOn: string | null;
              electricityEnabled: boolean; kplcPaybill: string | null; meterNumber: string | null; emergencyName: string; emergencyPhone: string; emergencyRelationship: string };
+  paymentMode: PaymentMode;
   balance: number; charged: number; paid: number;
   history: { id: string; amount: number; kind: string; receipt: string; at: string }[];
-  lastAttempt: { status: string; at: string } | null;
+  lastAttempt: { id: string; status: string; at: string } | null;
 }
 export interface TenantApi {
   home(): Promise<TenantHome | null>;

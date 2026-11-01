@@ -32,7 +32,7 @@ export function buildStkBody(c: DarajaCreds, r: StkRequest, now = new Date()) {
   return {
     BusinessShortCode: c.shortcode, Password: stkPassword(c.shortcode, c.passkey, ts), Timestamp: ts,
     TransactionType: "CustomerPayBillOnline", Amount: r.amount, PartyA: r.msisdn, PartyB: c.shortcode, PhoneNumber: r.msisdn,
-    CallBackURL: r.callbackUrl, AccountReference: r.accountRef.slice(0, 12), TransactionDesc: r.description.slice(0, 13),
+    CallBackURL: r.callbackUrl, AccountReference: r.accountRef.slice(0, 40), TransactionDesc: r.description.slice(0, 13),
   };
 }
 

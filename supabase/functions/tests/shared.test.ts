@@ -11,7 +11,9 @@ Deno.test("daraja: Nairobi time, password and body", () => {
   eq(nairobiTimestamp(new Date("2026-10-15T21:30:05Z")), "20261016003005");               // 21:30 UTC is 00:30 the next day in Nairobi
   eq(stkPassword("174379", "pk", "20261016003005"), btoa("174379pk20261016003005"));
   const b = buildStkBody(creds, { amount: 6500, msisdn: "254712345678", accountRef: "ABCDEF123456789", description: "Rent payment for the month", callbackUrl: "https://f/x" }, new Date("2026-10-15T21:30:05Z"));
-  eq(b.AccountReference.length, 12); eq(b.TransactionDesc.length, 13); eq(b.Amount, 6500); eq(b.PartyB, "174379"); eq(b.TransactionType, "CustomerPayBillOnline");
+  eq(b.AccountReference, "ABCDEF123456789"); eq(b.TransactionDesc.length, 13); eq(b.Amount, 6500); eq(b.PartyB, "174379"); eq(b.TransactionType, "CustomerPayBillOnline");
+  const longAccount = "1234567890123456789012345678901234567890";
+  eq(buildStkBody(creds, { amount: 6500, msisdn: "254712345678", accountRef: longAccount, description: "Rent", callbackUrl: "https://f/x" }).AccountReference, longAccount);
   nodeAssert.throws(() => buildStkBody(creds, { amount: 0, msisdn: "254712345678", accountRef: "A", description: "R", callbackUrl: "x" }));
   nodeAssert.throws(() => buildStkBody(creds, { amount: 10.5, msisdn: "254712345678", accountRef: "A", description: "R", callbackUrl: "x" }));
   eq(toMsisdn("0712345678"), "254712345678"); nodeAssert.throws(() => toMsisdn("712345678"));

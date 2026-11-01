@@ -2,9 +2,7 @@
 
 Project **hostel-new**, ref `gzhyorqbpvpoevaeiuvz`.
 
-Migrations, in order: `0001_core`, `0002_money`, `0003_access`, `0004_signup`, `0005_jobs`, `0006_onboarding`, `0007_storage`,
-`0008_admin`, `0009_features`, `0010_payment_plumbing`, `0011_caretakers_view`, `0012_landlord_email_verification`, `0013_public_viewing_requests`,
-`0014_subscription_extra_unit_price`, `0015_expand_town_catalog`, `0016_landlord_viewings`, `0017_remove_caretaker_feature`. The final migration removes caretaker access and invites while preserving old authentication profile rows. Then run `seed/seed.sql`, then `cron.sql`.
+Apply all migrations in filename order through `0024_remove_paystack_integration.sql`, then run `seed/seed.sql`, then `cron.sql`. Migrations `0018` and `0019` are historical; migration `0024` disables that retired route, removes its stored credentials and server RPCs, and moves any landlords still using it to Platform Paybill. If the old Edge Functions were deployed, also delete `paystack-connect`, `paystack-init`, `paystack-verify`, and `paystack-webhook` from Supabase Dashboard > Edge Functions; removing local source files does not remove existing deployments. The caretaker migration removes caretaker access and invites while preserving old authentication profile rows.
 
 ## Set up, in this order
 1. **Link and apply the database**
@@ -40,7 +38,8 @@ Migrations, in order: `0001_core`, `0002_money`, `0003_access`, `0004_signup`, `
 4. **Deploy the functions**
    ```bash
    supabase functions deploy phone-code-send phone-code-verify email-verified-sync admin-send-reminder daraja-stk platform-pay \
-     daraja-stk-callback daraja-c2b-validate daraja-c2b-confirm payments-connect sms-broadcast visit-code-send visit-request \
+     daraja-stk-callback daraja-c2b-validate daraja-c2b-confirm payments-connect \
+     sms-broadcast visit-code-send visit-request \
      invite-create invite-lookup invite-accept cron
    ```
 5. **Schedule the jobs:** edit `supabase/cron.sql` (paste your CRON_SECRET) and run it in the SQL editor.
@@ -60,11 +59,11 @@ Sign in at `/sign-in`. The first time, you set up an authenticator app. After th
 2. Upload an ID and KRA PIN. In `/admin`, approve it. The landlord now sees "pay your first month".
 3. Pay with the Daraja sandbox (the sandbox accepts a test phone number). Landlord becomes active.
 4. Post a house with 3 photos. Open it on the public site. Request a viewing as a visitor (no phone code required), then contact the visitor and schedule it in `/admin`.
-5. Add a tenant, send the invite, open the link, create the tenant login, confirm the phone, pay rent with the prompt.
+5. Add a tenant, send the invite, open the link, create the tenant login, confirm the phone, and test rent by the landlord's selected payment route.
 6. Watch the ledger, the payment text, the reminders (run the `cron` function by hand with task `reminders`) and the admin pages.
 
 ## Tests
-`npm test` runs 197 tests: 20 shared rules, 133 database tests (a real Postgres engine with a stand-in for Supabase's own parts), 44 server-function tests (Deno). Before launch, run the database checks once on a real Supabase stack as well.
+`npm test` runs 202 tests: 20 shared rules, 136 database tests (PGlite with a stand-in for Supabase's own parts), and 46 server-function tests (Deno). Database test files run one at a time to keep PGlite within memory limits. Before launch, run the database checks once on a real Supabase stack as well.
 
 ## Rules for every new migration
 1. New table: enable row-level security and grant only the columns a browser needs.

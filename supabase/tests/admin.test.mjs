@@ -20,7 +20,7 @@ describe("admin access needs the authenticator code", () => {
     await rejects(as(db, pwOnly, "select admin_celcom_topup(500,'REF1')"), /Not allowed/);
   });
   it("only admins can use the admin views, whatever their session level", async () => {
-    for (const v of ["admin_kyc_queue", "admin_subscription_payments", "admin_celcom_balance", "admin_sms_month", "admin_viewings", "admin_landlord_overview"]) {
+    for (const v of ["admin_kyc_queue", "admin_subscription_payments", "admin_celcom_balance", "admin_sms_month", "admin_landlord_overview"]) {
       assert.equal(await count(db, user(w.la), v), 0, `${v} must be empty for a landlord`);
       assert.equal(await count(db, user(w.ta), v), 0, `${v} must be empty for a tenant`);
     }
@@ -122,18 +122,19 @@ describe("platform SMS credit (Celcom)", () => {
   });
 });
 
-describe("viewings in the admin queue", () => {
+describe("landlord viewing management", () => {
   let db, w, id;
   before(async () => {
     db = await freshDb(); w = await buildWorld(db);
     id = (await as(db, server, "select create_visit_request($1,'Faith Njeri','0711666001',current_date + 1,'Morning') id", [w.hA]))[0].id;
   });
-  const set = (sqlText, params = []) => as(db, user(w.admin), `update visit_requests set ${sqlText} where id=$1`, [id, ...params]);
+  const set = (sqlText, params = []) => as(db, user(w.la), `update visit_requests set ${sqlText} where id=$1`, [id, ...params]);
 
-  it("the admin sees the house and landlord with each request; others do not", async () => {
-    const v = (await as(db, user(w.admin), "select * from admin_viewings"))[0];
-    assert.deepEqual({ house: v.house_title, status: v.status }, { house: "Block A", status: "new" });
-    assert.equal(await count(db, user(w.la), "admin_viewings"), 0);
+  it("only the owning landlord sees the visitor's request", async () => {
+    const v = (await as(db, user(w.la), "select * from visit_requests where id=$1", [id]))[0];
+    assert.deepEqual({ house: v.house_id, status: v.status }, { house: w.hA, status: "new" });
+    assert.equal(await count(db, user(w.lb), "visit_requests", "id=$1", [id]), 0);
+    assert.equal(await count(db, user(w.admin), "visit_requests", "id=$1", [id]), 0);
   });
   it("a viewing moves forward only along real steps", async () => {
     await rejects(set("status='scheduled', scheduled_date=current_date+1, scheduled_window='Morning'"), /cannot move from new to scheduled/);
@@ -148,14 +149,14 @@ describe("viewings in the admin queue", () => {
   it("finished viewings are locked", async () => {
     for (const s of ["new", "contacted", "scheduled", "cancelled", "no_show"]) await rejects(set(`status='${s}'`), /cannot move from done/);
   });
-  it("the admin can add notes but cannot change the visitor's details", async () => {
-    await set("admin_notes='Called, will come at 10'");
+  it("landlords cannot edit protected notes or visitor details", async () => {
+    await rejects(set("admin_notes='Called, will come at 10'"), /permission denied/);
     await rejects(set("visitor_phone='0799000000'"), /permission denied/);
     await rejects(set("house_id=house_id"), /permission denied/);
   });
   it("a house the landlord says is gone can be closed straight from new or contacted", async () => {
     const other = (await as(db, server, "select create_visit_request($1,'Amina Hassan','0711666002',current_date + 1,'Evening') id", [w.hA]))[0].id;
-    await as(db, user(w.admin), "update visit_requests set status='house_taken' where id=$1", [other]);
+    await as(db, user(w.la), "update visit_requests set status='house_taken' where id=$1", [other]);
     assert.equal((await one(db, "select status from visit_requests where id=$1", [other])).status, "house_taken");
   });
 });

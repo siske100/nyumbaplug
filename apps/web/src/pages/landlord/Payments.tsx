@@ -54,7 +54,7 @@ export default function Payments() {
       <ErrorNote error={error} />
       <Stats loading={isPending} items={[
         { label: "Received this month", value: formatKes(month), tone: "ok" }, { label: "Still owed", value: formatKes(data?.owed ?? 0), tone: (data?.owed ?? 0) > 0 ? "warn" : undefined },
-        { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : "Platform", note: data?.mode === "own" ? "straight to you" : "paid out to you" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
+        { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : data?.mode === "bank_paybill" ? "Bank Paybill" : "Platform", note: data?.mode === "platform" ? "paid out to you" : "settles to your account" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
       ]} />
 
       {data && data.held.length > 0 && (
@@ -95,7 +95,7 @@ export default function Payments() {
         <ul className="mt-3 divide-y divide-white/8">
           {data?.ledger.map((l) => (
             <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <div><p className="font-medium">{l.tenantName} <span className="text-graphite-400">unit {l.unit}</span></p><p className="text-sm text-graphite-300">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : "Reversal"} · {l.ref}</p></div>
+              <div><p className="font-medium">{l.tenantName} <span className="text-graphite-400">unit {l.unit}</span></p><p className="text-sm text-graphite-300">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : l.method === "bank_paybill" ? "Bank Paybill" : l.method === "paystack" ? "External checkout (historical)" : "Reversal"} · {l.ref}</p></div>
               <div className="flex flex-wrap items-center gap-2">{l.reversed && <Chip>Reversed</Chip>}{l.kind === "reversal" && <Chip tone="danger">Reversal</Chip>}<span className={l.kind === "reversal" ? "text-danger" : ""}>{l.kind === "reversal" ? "−" : ""}{formatKes(l.amount)}</span><Reverse row={l} /></div>
             </li>
           ))}

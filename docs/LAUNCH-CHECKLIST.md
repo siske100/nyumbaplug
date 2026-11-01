@@ -5,6 +5,7 @@ Everything below needs a live account, so it could not be proved in the build en
 ## Must confirm with the providers
 - [ ] **Celcom:** the real web address, field names and success response. Edit only `supabase/functions/_shared/sms.ts`. Send yourself one SMS.
 - [ ] **Safaricom Daraja:** apply for live access to the platform Paybill now (it can take weeks). In the sandbox, test: STK prompt, success callback, cancelled prompt, timeout, a manual Paybill payment, and wrong amounts.
+- [ ] **Bank Paybill:** before enabling it for real rent, test a small STK payment with the receiving bank Paybill and landlord account reference. Confirm Safaricom accepts the receiving shortcode with the configured Daraja credentials and supports the account-reference length.
 - [ ] Confirm the **C2B register-URL** endpoint version and the **STK status check** behaviour against Safaricom's current documentation (`functions/_shared/daraja.ts`).
 - [ ] Ask Safaricom to enable **external validation** on the Paybill, so wrong manual amounts are refused up front. Without it, wrong amounts are still held safely, not credited.
 - [ ] Optional but recommended: set `DARAJA_ALLOWED_IPS`-style filtering at your host or firewall to Safaricom's published callback addresses. The app already refuses callbacks it cannot confirm with Safaricom.

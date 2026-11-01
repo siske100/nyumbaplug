@@ -23,6 +23,22 @@ describe("money", () => {
   const checkoutOf = async (a) => (await sql(db, "select checkout_request_id c from payment_attempts where id=$1", [a]))[0].c;
   const confirm = async (co, receipt, amount) => (await as(db, server, "select confirm_payment($1,$2,$3,'0711000001') id", [co, receipt, amount]))[0].id;
 
+  it("seeds the supplied commercial bank Paybills", async () => {
+    assert.deepEqual(await sql(db, "select name, paybill from banks order by name"), [
+      { name: "Absa Kenya", paybill: "303030" },
+      { name: "Co-operative Bank", paybill: "400200" },
+      { name: "DTB", paybill: "516600" },
+      { name: "Equity Bank", paybill: "247247" },
+      { name: "Family Bank", paybill: "222111" },
+      { name: "I&M Bank", paybill: "542542" },
+      { name: "KCB", paybill: "522522" },
+      { name: "NCBA", paybill: "880100" },
+      { name: "National Bank (KCB Group)", paybill: "547700" },
+      { name: "Stanbic Bank", paybill: "600100" },
+      { name: "Standard Chartered", paybill: "329329" },
+    ]);
+  });
+
   it("a full M-Pesa payment is recorded once, even if Safaricom calls back twice", async () => {
     const t = await tenancy(); const a = await attempt(t.id); const co = await checkoutOf(a);
     const id1 = await confirm(co, "RCPT0001A", 6500);
@@ -178,5 +194,39 @@ describe("money", () => {
     await as(db, user(w.la), "select set_payment_mode('own')");
     assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "own");
     await as(db, user(w.la), "select set_payment_mode('platform')");
+  });
+  it("removed checkout routes cannot be selected and their credential columns are gone", async () => {
+    await rejects(as(db, user(w.la), "select set_payment_mode('paystack')"), /invalid input value for enum/);
+    assert.deepEqual(await sql(db, `select enumlabel from pg_enum
+      where enumtypid='payment_mode'::regtype and enumlabel='paystack'`), []);
+    assert.deepEqual(await sql(db, `select column_name from information_schema.columns
+      where table_schema='public' and table_name='payment_accounts'
+        and column_name in ('paystack_credentials_ciphertext','paystack_status','paystack_failure_reason')`), []);
+    assert.deepEqual(await sql(db, `select column_name from information_schema.columns
+      where table_schema='public' and table_name='payment_attempts' and column_name='provider'`), []);
+  });
+  it("records a bank-Paybill STK confirmation with its distinct ledger method", async () => {
+    const t = await tenancy();
+    const a = await attempt(t.id);
+    await as(db, server, "update payment_attempts set bank_paybill_shortcode='523456' where id=$1", [a]);
+    const id = await confirm(await checkoutOf(a), "BANKRCPT001", 6500);
+    assert.ok(id);
+    assert.deepEqual((await sql(db, "select method, provider_ref from ledger_entries where attempt_id=$1", [a]))[0],
+      { method: "bank_paybill", provider_ref: "BANKRCPT001" });
+  });
+  it("bank accounts require landlord confirmation, reset on bank changes, and stay RLS protected", async () => {
+    const bank1 = (await sql(db, "insert into banks(name,paybill) values('Test Bank','523456') returning id"))[0].id;
+    await rejects(as(db, user(w.la), "update landlord_bank_accounts set verified=true"), /permission denied/);
+    await as(db, user(w.la), "select save_landlord_bank_account($1,'1234567890123456789012345678901234567890')", [bank1]);
+    await as(db, user(w.la), "select confirm_landlord_bank_account_test('BANKRCPT002')");
+    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "bank_paybill");
+
+    await sql(db, "update banks set paybill='523457' where id=$1", [bank1]);
+    const [reset] = await as(db, user(w.la), "select account_number, verified from landlord_bank_accounts");
+    assert.deepEqual(reset, { account_number: "1234567890123456789012345678901234567890", verified: false });
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "platform");
+    await rejects(as(db, user(w.la), "select * from pending_stk_attempts()"), /permission denied/);
+    await rejects(as(db, anon, "select * from pending_stk_attempts()"), /permission denied/);
   });
 });

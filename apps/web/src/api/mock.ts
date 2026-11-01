@@ -184,6 +184,7 @@ export const mockApi: Api = {
           emergencyPhone: "0712345678",
           emergencyRelationship: "Mother",
         },
+        paymentMode: "platform",
         balance: 6500,
         charged: 13000,
         paid: 6500,

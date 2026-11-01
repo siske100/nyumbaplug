@@ -187,17 +187,18 @@ describe("viewing requests", () => {
     const [{ id }] = await as(db, server, "select create_visit_request($1,'Faith Njeri','0711666010',current_date+1,'Morning') id", [w.hA]);
     assert.equal((await as(db, user(w.la), "select 1 from visit_requests where id=$1", [id])).length, 1);
     assert.equal((await as(db, user(w.lb), "select 1 from visit_requests where id=$1", [id])).length, 0);
-    assert.ok((await as(db, user(w.admin), "select 1 from visit_requests")).length > 0);
-    await as(db, user(w.admin), "update visit_requests set status='contacted' where id=$1", [id]);
-    await as(db, user(w.admin), "update visit_requests set status='scheduled', scheduled_date=current_date+2, scheduled_window='Morning' where id=$1", [id]);
+    assert.equal((await as(db, user(w.admin), "select 1 from visit_requests where id=$1", [id])).length, 0);
+    await as(db, user(w.la), "update visit_requests set status='contacted' where id=$1", [id]);
+    await as(db, user(w.la), "update visit_requests set status='scheduled', scheduled_date=current_date+2, scheduled_window='Morning' where id=$1", [id]);
     assert.equal((await as(db, user(w.la), "select 1 from visit_requests where id=$1", [id])).length, 1);
     assert.equal((await as(db, user(w.lb), "select 1 from visit_requests where id=$1", [id])).length, 0);
-    await rejects(as(db, user(w.la), "update visit_requests set status='done' where id=$1", [id]), /permission denied|row-level/).catch(async () => {
-      assert.equal((await as(db, user(w.la), "update visit_requests set status='done' where id=$1 returning id", [id])).length, 0);
-    });
+    await as(db, user(w.la), "update visit_requests set status='done' where id=$1", [id]);
+    assert.equal((await one(db, "select status from visit_requests where id=$1", [id])).status, "done");
   });
   it("rescheduling: only the owner, only scheduled viewings, inside the week, at most twice", async () => {
-    const [{ id }] = await sql(db, "select id from visit_requests where status='scheduled' limit 1");
+    const [{ id }] = await as(db, server, "select create_visit_request($1,'Amina Hassan','0711666011',current_date+1,'Morning') id", [w.hA]);
+    await as(db, user(w.la), "update visit_requests set status='contacted' where id=$1", [id]);
+    await as(db, user(w.la), "update visit_requests set status='scheduled', scheduled_date=current_date+2, scheduled_window='Morning' where id=$1", [id]);
     await rejects(as(db, user(w.lb), "select reschedule_visit($1,current_date+3,'Evening')", [id]), /Viewing not found/);
     await rejects(as(db, user(w.la), "select reschedule_visit($1,current_date+9,'Evening')", [id]), /within the next 7 days/);
     await rejects(as(db, user(w.la), "select reschedule_visit($1,current_date+3,'Midnight')", [id]), /Invalid time window/);
@@ -206,7 +207,7 @@ describe("viewing requests", () => {
     await rejects(as(db, user(w.la), "select reschedule_visit($1,current_date+5,'Morning')", [id]), /Maximum 2 reschedules/);
     const v = await one(db, "select status, reschedule_count c from visit_requests where id=$1", [id]);
     assert.deepEqual(v, { status: "rescheduled", c: 2 });
-    const [{ id: fresh }] = await sql(db, "select id from visit_requests where status='new' limit 1");
+    const [{ id: fresh }] = await as(db, server, "select create_visit_request($1,'Sara Njeri','0711666012',current_date+1,'Afternoon') id", [w.hA]);
     await rejects(as(db, user(w.la), "select reschedule_visit($1,current_date+3,'Morning')", [fresh]), /Viewing not found|Only scheduled/);
   });
 });

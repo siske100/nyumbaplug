@@ -16,20 +16,32 @@ export default function Pay() {
   const { data: session } = useSession();
   const [waiting, setWaiting] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-  const before = useRef<number | null>(null);
+  const before = useRef<{ balance: number; attemptId: string | null } | null>(null);
   const home = useLive("tenant", "home", () => api.tenant.home(), { refetchInterval: waiting ? 4000 : false });
   const pay = useLiveMutation<void, { message: string; amount: number }>("tenant", () => api.tenant.pay());
   const [copied, setCopied] = useState<string>();
   const h = home.data;
 
   useEffect(() => {
-    if (!waiting) return;
+    if (!waiting || h?.paymentMode === "bank_paybill") return;
     const stop = setTimeout(() => setWaiting(false), 3 * 60_000);
     return () => clearTimeout(stop);
-  }, [waiting]);
+  }, [waiting, h?.paymentMode]);
   useEffect(() => {
-    if (waiting && h && before.current !== null && before.current > 0 && h.balance === 0) { setWaiting(false); setCelebrate(true); }
-    if (waiting && h?.lastAttempt?.status === "failed") setWaiting(false);
+    if (!waiting || !h) return;
+    if (before.current && before.current.balance > 0 && h.balance === 0) {
+      setWaiting(false);
+      setCelebrate(true);
+    }
+    if (!before.current) return;
+    const attempt = h.lastAttempt;
+    if (!attempt || attempt.id === before.current.attemptId) return;
+    if (attempt.status === "succeeded") {
+      setWaiting(false);
+      if (h.balance === 0) setCelebrate(true);
+    } else if (attempt.status === "failed" || attempt.status === "timeout") {
+      setWaiting(false);
+    }
   }, [h, waiting]);
 
   if (home.isPending) return <HouseLoader />;
@@ -53,11 +65,22 @@ export default function Pay() {
         {celebrate ? <PayCelebration message="Payment received. Thank you!" /> : h.balance > 0 ? (
           <>
             <h2 className="text-2xl">Pay rent</h2>
-            <p className="text-graphite-300">You pay the full balance of <span className="text-bone">{formatKes(h.balance)}</span>. You will get an M-Pesa prompt on your phone: enter your PIN to finish.</p>
+            <p className="text-graphite-300">
+              You pay the full balance of <span className="text-bone">{formatKes(h.balance)}</span>.
+              {h.paymentMode === "bank_paybill"
+                ? " An M-Pesa prompt will be sent to your phone for your landlord's bank Paybill. Rent is recorded after Safaricom confirms the payment."
+                : " You will get an M-Pesa prompt on your phone: enter your PIN to finish."}
+            </p>
             <ErrorNote error={pay.error} />
-            {waiting && <p role="status" className="text-ember-300">Check your phone and enter your M-Pesa PIN. This page updates by itself.</p>}
-            {!waiting && h.lastAttempt?.status === "failed" && <p className="text-sm text-graphite-300">Your last payment did not go through. You were not charged. Try again.</p>}
-            <div><Button magnetic size="md" loading={pay.isPending} disabled={waiting} onClick={() => { before.current = h.balance; setCelebrate(false); pay.mutate(undefined, { onSuccess: () => setWaiting(true) }); }}>{waiting ? "Waiting for M-Pesa..." : `Pay ${formatKes(h.balance)} with M-Pesa`}</Button></div>
+            {waiting && <p role="status" className="text-ember-300">{h.paymentMode === "bank_paybill"
+              ? "Check your phone and enter your M-Pesa PIN. Waiting for Safaricom to confirm the bank payment; this page updates automatically."
+              : "Check your phone and enter your M-Pesa PIN. This page updates by itself."}</p>}
+            {!waiting && (h.lastAttempt?.status === "failed" || h.lastAttempt?.status === "timeout") && <p className="text-sm text-graphite-300">{h.lastAttempt.status === "timeout" ? "We could not confirm your last payment. Check your M-Pesa messages before trying again." : "Your last payment did not go through. You were not charged. Try again."}</p>}
+            <div>
+              <Button magnetic size="md" loading={pay.isPending} disabled={waiting} onClick={() => { before.current = { balance: h.balance, attemptId: h.lastAttempt?.id ?? null }; setCelebrate(false); pay.mutate(undefined, { onSuccess: () => setWaiting(true) }); }}>
+                {waiting ? h.paymentMode === "bank_paybill" ? "Waiting for bank payment..." : "Waiting for M-Pesa..." : h.paymentMode === "bank_paybill" ? `Pay ${formatKes(h.balance)} by bank` : `Pay ${formatKes(h.balance)} with M-Pesa`}
+              </Button>
+            </div>
           </>
         ) : (
           <><h2 className="text-2xl">You are paid up</h2><p className="text-graphite-300">Nothing to pay right now. Your next rent of {formatKes(t.rent)} is due on the {t.dueDay}th.</p></>

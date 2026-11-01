@@ -12,12 +12,15 @@ export const tenantApi: TenantApi = {
     const { data: t, error } = await supabase.from("tenancies").select("*").neq("status", "ended").limit(1).maybeSingle();
     if (error) throw dbError(error);
     if (!t) return null;
-    const [h, b, l, a] = await Promise.all([
+    const [h, b, l, a, route] = await Promise.all([
       supabase.from("houses").select("title").eq("id", t.house_id).maybeSingle(),
       supabase.from("tenancy_balances").select("balance, charged, paid").eq("tenancy_id", t.id).maybeSingle(),
       supabase.from("ledger_entries").select("id, amount, kind, receipt_no, created_at").eq("tenancy_id", t.id).order("created_at", { ascending: false }).limit(50),
-      supabase.from("payment_attempts").select("status, created_at").eq("tenancy_id", t.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("payment_attempts").select("id, status, created_at").eq("tenancy_id", t.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.rpc("tenant_payment_route"),
     ]);
+    if (route.error) throw dbError(route.error);
+    if (route.data !== "platform" && route.data !== "own" && route.data !== "bank_paybill") throw new ApiError(500, "Could not load your landlord's payment option");
     const att = a.data as Row | null;
     return {
       tenancy: {
@@ -25,9 +28,10 @@ export const tenantApi: TenantApi = {
         agreementSignedOn: t.agreement_signed_on ?? null, electricityEnabled: Boolean(t.electricity_enabled), kplcPaybill: t.kplc_paybill ?? null, meterNumber: t.meter_number ?? null,
         emergencyName: t.emergency_name, emergencyPhone: t.emergency_phone, emergencyRelationship: t.emergency_relationship,
       },
+      paymentMode: route.data,
       balance: num(b.data?.balance), charged: num(b.data?.charged), paid: num(b.data?.paid),
       history: ((l.data ?? []) as Row[]).map((r) => ({ id: r.id as string, amount: num(r.amount), kind: r.kind as string, receipt: r.receipt_no as string, at: r.created_at as string })),
-      lastAttempt: att ? { status: att.status as string, at: att.created_at as string } : null,
+      lastAttempt: att ? { id: att.id as string, status: att.status as string, at: att.created_at as string } : null,
     };
   },
   pay: () => callFunction("daraja-stk"),

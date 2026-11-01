@@ -47,17 +47,40 @@ async function sendPrompt(d: PayDeps, kind: "tenant" | "platform", attemptId: st
 }
 
 /** A tenant pays the full balance. The database decides the amount; the browser only says "pay". */
-export async function tenantPay(d: PayDeps, i: { tenancyId: string; landlordId: string; tenancyCode: string; phone: string }) {
+export async function tenantPay(d: PayDeps, i: {
+  tenancyId: string; landlordId: string; tenancyCode: string; phone: string; paymentMode?: string | null;
+}) {
   const bal = await d.rpc("current_balance", { p_tenancy: i.tenancyId });
   if (bal.error) throw fromDb(bal.error);
   if (typeof bal.data !== "number" || bal.data <= 0) throw new HttpError(400, "Nothing to pay");
+
+  let bankDestination: { paybill: string; account_number: string } | undefined;
+  if (i.paymentMode === "bank_paybill") {
+    const destination = await d.rpc("tenant_bank_paybill", { p_tenancy: i.tenancyId });
+    if (destination.error) throw fromDb(destination.error);
+    const row = (Array.isArray(destination.data) ? destination.data[0] : destination.data) as
+      { paybill?: string; account_number?: string } | null;
+    if (!row || !/^\d{5,7}$/.test(row.paybill ?? "") || !/^\d{1,40}$/.test(row.account_number ?? "")) {
+      throw new HttpError(503, "This landlord's bank payment destination needs attention. Please try again later.");
+    }
+    bankDestination = { paybill: row.paybill!, account_number: row.account_number! };
+  }
+
   const started = await d.rpc("start_payment_attempt", { p_tenancy: i.tenancyId, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(), p_merchant: null });
   if (started.error) throw fromDb(started.error);
   const attemptId = started.data as string;
   let resolved;
-  try { resolved = await resolveCreds(d, i.landlordId); }
+  try {
+    if (bankDestination) {
+      const bound = await d.rpc("bind_bank_paybill_attempt", { p_attempt: attemptId, p_paybill: bankDestination.paybill });
+      if (bound.error) throw fromDb(bound.error);
+    }
+    resolved = await resolveCreds(d, i.landlordId);
+  }
   catch (e) { await d.rpc("fail_attempt_by_id", { p_kind: "tenant", p_attempt: attemptId, p_desc: "payment connection unavailable" }); throw e; }
-  await sendPrompt(d, "tenant", attemptId, resolved.creds, resolved.token, { amount: bal.data, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
+  const promptCreds = bankDestination ? { ...resolved.creds, shortcode: bankDestination.paybill } : resolved.creds;
+  const accountRef = bankDestination?.account_number ?? i.tenancyCode;
+  await sendPrompt(d, "tenant", attemptId, promptCreds, resolved.token, { amount: bal.data, phone: i.phone, accountRef, description: "Rent" });
   return { amount: bal.data, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
@@ -77,10 +100,15 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
   if (!cb) throw new HttpError(400, "Invalid callback");
   const found = await d.rpc("attempt_lookup", { p_checkout: cb.checkoutRequestId });
   if (found.error) throw fromDb(found.error);
-  const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string } | null;
+  const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string; bank_paybill_shortcode?: string | null } | null;
   if (!look) { console.error("callback for an unknown request", cb.checkoutRequestId); return ACK; }
 
-  const resolved = look.kind === "platform" ? { creds: d.env.platform, token: d.env.platformToken } : await resolveCreds(d, look.landlord_id);
+  const bankShortcode = look.kind === "tenant" ? look.bank_paybill_shortcode : null;
+  const resolved = look.kind === "platform"
+    ? { creds: d.env.platform, token: d.env.platformToken }
+    : bankShortcode
+      ? { creds: bankPaybillCreds(d, bankShortcode), token: d.env.platformToken }
+      : await resolveCreds(d, look.landlord_id);
   if (!safeEqual(token, resolved.token)) throw new HttpError(403, "Not allowed");
   if (look.status === "succeeded") return ACK;
 
@@ -171,11 +199,15 @@ export async function reconcilePending(d: PayDeps) {
   const out = { confirmed: 0, failed: 0, waiting: 0, errors: 0, timedOut: 0 };
   const expired = await d.rpc("expire_old_attempts", {});
   if (typeof expired.data === "number") out.timedOut = expired.data;
-  const list = await d.rpc("pending_attempts", { p_min_age: "3 minutes" });
+  const list = await d.rpc("pending_stk_attempts", { p_min_age: "3 minutes" });
   if (list.error) throw fromDb(list.error);
-  for (const a of (list.data as { kind: "tenant" | "platform"; landlord_id: string; checkout: string; amount: number }[] | null) ?? []) {
+  for (const a of (list.data as {
+    kind: "tenant" | "platform"; landlord_id: string; checkout: string; amount: number; bank_paybill_shortcode?: string | null;
+  }[] | null) ?? []) {
     try {
-      const creds = a.kind === "platform" ? d.env.platform : (await resolveCreds(d, a.landlord_id)).creds;
+      const creds = a.kind === "platform" ? d.env.platform
+        : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode)
+          : (await resolveCreds(d, a.landlord_id)).creds;
       const q = await d.daraja.stkQuery(creds, a.checkout);
       if (q.resultCode === -1) { out.waiting++; continue; }
       if (q.resultCode !== 0) {
@@ -196,4 +228,9 @@ export async function reconcilePending(d: PayDeps) {
     } catch (e) { console.error("reconcile failed for one attempt", e instanceof Error ? e.message : e); out.errors++; }
   }
   return out;
+}
+
+function bankPaybillCreds(d: PayDeps, shortcode: string): DarajaCreds {
+  if (!/^\d{5,7}$/.test(shortcode)) throw new HttpError(503, "This bank payment request needs attention");
+  return { ...d.env.platform, shortcode };
 }
