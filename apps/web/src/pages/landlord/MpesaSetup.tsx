@@ -15,6 +15,7 @@ export default function MpesaSetup() {
   const bankSetup = useLive("landlord", "bank-payment-setup", () => api.landlord.bankPaymentSetup());
   const connect = useLiveMutation("landlord", (v: Parameters<typeof api.landlord.connectDaraja>[0]) => api.landlord.connectDaraja(v));
   const saveBank = useLiveMutation("landlord", (v: { bankId: number; accountNumber: string | null }) => api.landlord.saveBankPaymentAccount(v.bankId, v.accountNumber));
+  const removeBank = useLiveMutation("landlord", () => api.landlord.removeBankPaymentAccount());
   const startBankTest = useLiveMutation("landlord", () => api.landlord.startBankPaymentTest());
   const confirmBankTest = useLiveMutation("landlord", () => api.landlord.confirmBankPaymentTest());
   const mode = useLiveMutation("landlord", (m: PaymentMode) => api.landlord.setPaymentMode(m));
@@ -23,6 +24,7 @@ export default function MpesaSetup() {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [showDarajaForm, setShowDarajaForm] = useState(false);
+  const [confirmRemoveBank, setConfirmRemoveBank] = useState(false);
   const [result, setResult] = useState<string>();
   const [bankResult, setBankResult] = useState<string>();
   const a = acct.data;
@@ -166,6 +168,43 @@ export default function MpesaSetup() {
         <ErrorNote error={saveBank.error} />
         <div><Button loading={saveBank.isPending} disabled={!selectedBank} onClick={submitBankAccount}>Save bank details</Button></div>
         {bankResult && <p role="status" className="text-sm text-graphite-200">{bankResult}</p>}
+        {bankAccount?.accountNumber && (
+          <div className="grid gap-2">
+            {!confirmRemoveBank ? (
+              <div>
+                <Button variant="ghost" disabled={removeBank.isPending || saveBank.isPending} onClick={() => setConfirmRemoveBank(true)}>
+                  Remove saved bank account
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3">
+                <p className="text-sm text-graphite-200">
+                  Remove the saved account number and verification? Bank Paybill will switch to Platform Paybill.
+                  Safaricom test-payment history will be kept.
+                </p>
+                <ErrorNote error={removeBank.error} />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="glass"
+                    loading={removeBank.isPending}
+                    onClick={() => removeBank.mutate(undefined, {
+                      onSuccess: () => {
+                        setBankAccountNumber("");
+                        setConfirmRemoveBank(false);
+                        setBankResult("Bank account removed. Add replacement bank details below.");
+                      },
+                    })}
+                  >
+                    Confirm removal
+                  </Button>
+                  <Button variant="ghost" disabled={removeBank.isPending} onClick={() => setConfirmRemoveBank(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {bankAccount?.accountNumber && !bankAccount.verified && selectedBank
           && bankAccount.bankId === selectedBank.id && bankAccount.accountNumber === bankAccountNumber && (

@@ -177,6 +177,7 @@ export interface LandlordApi {
   paymentAccount(): Promise<PaymentAccount>;
   bankPaymentSetup(): Promise<BankPaymentSetup>;
   saveBankPaymentAccount(bankId: number, accountNumber: string | null): Promise<"saved" | "reenter_account_number">;
+  removeBankPaymentAccount(): Promise<void>;
   startBankPaymentTest(): Promise<{ message: string; amount: number }>;
   confirmBankPaymentTest(): Promise<void>;
   connectDaraja(input: DarajaInput): Promise<{ status: "connected" | "failed"; reason?: string }>;

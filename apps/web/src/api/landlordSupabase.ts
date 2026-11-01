@@ -377,6 +377,10 @@ export const landlordApi: LandlordApi = {
     if (data !== "saved" && data !== "reenter_account_number") throw new ApiError(500, "The bank account could not be saved");
     return data;
   },
+  async removeBankPaymentAccount() {
+    const { error } = await supabase.rpc("remove_landlord_bank_account");
+    if (error) throw dbError(error);
+  },
   startBankPaymentTest: () => callFunction<{ message: string; amount: number }>("daraja-stk", { action: "bank_test" }),
   async confirmBankPaymentTest() {
     const { error } = await supabase.rpc("confirm_landlord_bank_account_test");

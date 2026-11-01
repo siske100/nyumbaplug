@@ -243,4 +243,27 @@ describe("money", () => {
     await rejects(as(db, user(w.la), "select * from pending_stk_attempts()"), /permission denied/);
     await rejects(as(db, anon, "select * from pending_stk_attempts()"), /permission denied/);
   });
+  it("landlords can remove their saved bank account and add replacement details", async () => {
+    const bank = (await sql(db, "insert into banks(name,paybill) values('Replacement Bank','523458') returning id"))[0].id;
+    await sql(db, "update profiles set phone='0712345678' where id=$1", [w.la]);
+    assert.equal((await as(db, user(w.la), "select save_landlord_bank_account($1,'111222333') status", [bank]))[0].status, "reenter_account_number");
+    await as(db, user(w.la), "select save_landlord_bank_account($1,'111222333')", [bank]);
+    const [test] = await as(db, server, "select * from start_bank_test_payment($1)", [w.la]);
+    await as(db, server, "select bind_bank_test_payment($1,'bank_CO_2')", [test.id]);
+    await as(db, server, "select complete_bank_test_payment('bank_CO_2','BANKRCPT003',10,'254712345678')");
+    await as(db, user(w.la), "select confirm_landlord_bank_account_test()");
+    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
+
+    await rejects(as(db, user(w.lb), "select remove_landlord_bank_account()"), /No saved bank account/);
+    await as(db, user(w.la), "select remove_landlord_bank_account()");
+    assert.deepEqual((await as(db, user(w.la), "select bank_id, account_number, verified, test_payment_receipt from landlord_bank_accounts"))[0],
+      { bank_id: bank, account_number: null, verified: false, test_payment_receipt: null });
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "platform");
+    assert.deepEqual((await as(db, user(w.la), "select status, mpesa_receipt from bank_test_payments"))[0],
+      { status: "succeeded", mpesa_receipt: "BANKRCPT003" });
+
+    await as(db, user(w.la), "select save_landlord_bank_account($1,'999888777')", [bank]);
+    assert.deepEqual((await as(db, user(w.la), "select account_number, verified from landlord_bank_accounts"))[0],
+      { account_number: "999888777", verified: false });
+  });
 });
