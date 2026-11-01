@@ -216,9 +216,23 @@ describe("money", () => {
   });
   it("bank accounts require landlord confirmation, reset on bank changes, and stay RLS protected", async () => {
     const bank1 = (await sql(db, "insert into banks(name,paybill) values('Test Bank','523456') returning id"))[0].id;
+    await sql(db, "update profiles set phone='0712345678' where id=$1", [w.la]);
     await rejects(as(db, user(w.la), "update landlord_bank_accounts set verified=true"), /permission denied/);
+    await rejects(as(db, user(w.la), "select start_bank_test_payment($1)", [w.la]), /permission denied/);
     await as(db, user(w.la), "select save_landlord_bank_account($1,'1234567890123456789012345678901234567890')", [bank1]);
-    await as(db, user(w.la), "select confirm_landlord_bank_account_test('BANKRCPT002')");
+    const [test] = await as(db, server, "select * from start_bank_test_payment($1)", [w.la]);
+    assert.deepEqual(test, {
+      id: test.id, paybill: "523456", account_number: "1234567890123456789012345678901234567890", phone: "0712345678",
+    });
+    await as(db, server, "select bind_bank_test_payment($1,'bank_CO_1')", [test.id]);
+    await rejects(as(db, user(w.la), "select confirm_landlord_bank_account_test()"), /Wait for Safaricom/);
+    await rejects(as(db, user(w.la), "select complete_bank_test_payment('bank_CO_1','BANKRCPT002',10,'254712345678')"), /permission denied/);
+    await as(db, server, "select complete_bank_test_payment('bank_CO_1','BANKRCPT002',10,'254712345678')");
+    assert.deepEqual((await as(db, user(w.la), "select status, mpesa_receipt from bank_test_payments"))[0],
+      { status: "succeeded", mpesa_receipt: "BANKRCPT002" });
+    assert.deepEqual(await as(db, user(w.lb), "select id from bank_test_payments"), []);
+    await rejects(as(db, user(w.la), "update bank_test_payments set mpesa_receipt='LANDLORD1'"), /permission denied/);
+    await as(db, user(w.la), "select confirm_landlord_bank_account_test()");
     await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
     assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "bank_paybill");
 

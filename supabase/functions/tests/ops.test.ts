@@ -4,7 +4,7 @@ import { acceptInvite, createInvite, lookupInvite } from "../_shared/invites.ts"
 import { broadcast, notifyPaid, reminderSms, runReminders, sendLandlordSms, submitVisitRequest } from "../_shared/messaging.ts";
 import { runCron } from "../_shared/cron.ts";
 import { HttpError, type Rpc } from "../_shared/ops.ts";
-import { c2bConfirm, c2bValidate, connectDaraja, handleStkCallback, platformPay, reconcilePending, tenantPay, type ConnectDeps } from "../_shared/payments.ts";
+import { bankTestPay, c2bConfirm, c2bValidate, connectDaraja, handleStkCallback, platformPay, reconcilePending, tenantPay, type ConnectDeps } from "../_shared/payments.ts";
 
 const eq = (a: unknown, b: unknown) => nodeAssert.deepStrictEqual(a, b);
 const ok = (c: unknown, m?: string) => nodeAssert.ok(c, m);
@@ -107,6 +107,57 @@ Deno.test("tenant pays: nothing owed, or a prompt that cannot be sent, are handl
   await rejectsWith(() => tenantPay(payDeps(f, down), { tenancyId: "t", landlordId: "l", tenancyCode: "Z", phone: "0712345678" }), 502);
   restore();
   eq(f.last("fail_attempt_by_id")!.p_attempt, "att");
+});
+
+// ---------------- bank account verification ----------------
+Deno.test("bank test: sends KES 10 to the verified phone and bank account through Daraja", async () => {
+  const f = fake({
+    start_bank_test_payment: () => ({ data: [{ id: "test-1", paybill: "523456", account_number: "123456", phone: "0712345678" }] }),
+    bind_bank_test_payment: () => ({}),
+  });
+  const { d, pushes } = mkDaraja();
+  const result = await bankTestPay(payDeps(f, d), "landlord-1");
+  eq(result.amount, 10);
+  eq(pushes[0]!.creds, { ...PLATFORM, shortcode: "523456" });
+  eq(pushes[0]!.req.amount, 10);
+  eq(pushes[0]!.req.msisdn, "254712345678");
+  eq(pushes[0]!.req.accountRef, "123456");
+  eq(pushes[0]!.req.callbackUrl, "https://x.supabase.co/functions/v1/daraja-stk-callback/PLATFORMTOKEN");
+  eq(f.last("bind_bank_test_payment"), { p_id: "test-1", p_checkout: "ws_CO_1" });
+});
+
+// ---------------- bank test callbacks ----------------
+Deno.test("bank test callback: confirms the receipt only after an STK query succeeds", async () => {
+  const f = fake({ bank_test_payment_lookup: () => ({ data: { kind: "bank_test", status: "pending", paybill: "523456", phone: "0712345678" } }) });
+  const { d, queried, queryCreds } = mkDaraja();
+  const body = cb({ CallbackMetadata: { Item: [
+    { Name: "Amount", Value: 10 }, { Name: "MpesaReceiptNumber", Value: "NLJ7RT61SV" }, { Name: "PhoneNumber", Value: 254712345678 },
+  ] } });
+  await handleStkCallback(payDeps(f, d), "PLATFORMTOKEN", body);
+  eq(queried, ["ws_CO_1"]);
+  eq(queryCreds, [{ ...PLATFORM, shortcode: "523456" }]);
+  eq(f.last("complete_bank_test_payment"), {
+    p_checkout: "ws_CO_1", p_receipt: "NLJ7RT61SV", p_amount: 10, p_phone: "254712345678",
+  });
+});
+
+Deno.test("bank test callback: rejects wrong token and does not record an unconfirmed or wrong-amount test", async () => {
+  const body = cb({ CallbackMetadata: { Item: [
+    { Name: "Amount", Value: 10 }, { Name: "MpesaReceiptNumber", Value: "NLJ7RT61SV" }, { Name: "PhoneNumber", Value: 254712345678 },
+  ] } });
+  const wrongToken = fake({ bank_test_payment_lookup: () => ({ data: { kind: "bank_test", status: "pending", paybill: "523456", phone: "0712345678" } }) });
+  await rejectsWith(() => handleStkCallback(payDeps(wrongToken, mkDaraja().d), "wrong", body), 403);
+
+  const restore = quiet();
+  const unconfirmed = fake({ bank_test_payment_lookup: () => ({ data: { kind: "bank_test", status: "pending", paybill: "523456", phone: "0712345678" } }) });
+  const failedQuery = mkDaraja({ stkQuery: async () => ({ resultCode: 1032, resultDesc: "cancelled" }) });
+  await handleStkCallback(payDeps(unconfirmed, failedQuery.d), "PLATFORMTOKEN", body);
+  ok(!unconfirmed.names().includes("complete_bank_test_payment"));
+
+  const wrongAmount = fake({ bank_test_payment_lookup: () => ({ data: { kind: "bank_test", status: "pending", paybill: "523456", phone: "0712345678" } }) });
+  await handleStkCallback(payDeps(wrongAmount, mkDaraja().d), "PLATFORMTOKEN", cb());
+  eq(wrongAmount.names(), ["bank_test_payment_lookup", "fail_bank_test_payment"]);
+  restore();
 });
 
 // ---------------- landlords buying ----------------

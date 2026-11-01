@@ -1,11 +1,14 @@
-import { handle, HttpError, requireUser, userClient } from "../_shared/http.ts";
+import { handle, HttpError, readJson, requireUser, userClient } from "../_shared/http.ts";
 import { fromDb } from "../_shared/ops.ts";
-import { tenantPay } from "../_shared/payments.ts";
+import { bankTestPay, tenantPay } from "../_shared/payments.ts";
 import { payDeps } from "../_shared/wiring.ts";
 
 // A tenant taps "Pay rent". Their own tenancy is found by the database's row-level rules, and only their verified phone is used.
 Deno.serve(handle(async (req) => {
-  await requireUser(req);
+  const user = await requireUser(req);
+  const body = await readJson(req);
+  if (body.action === "bank_test") return bankTestPay(payDeps(), user.id);
+  if (body.action !== undefined) throw new HttpError(400, "Invalid payment action");
   const me = userClient(req);
   const { data: route, error: routeError } = await me.rpc("tenant_payment_route");
   if (routeError) throw fromDb(routeError);

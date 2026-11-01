@@ -137,7 +137,11 @@ export interface PaymentAccount {
 }
 export interface BankOption { id: number; name: string; paybill: string }
 export interface LandlordBankAccount { bankId: number; accountNumber: string | null; verified: boolean; testPaymentReceipt: string | null; verifiedAt: string | null }
-export interface BankPaymentSetup { banks: BankOption[]; account: LandlordBankAccount | null }
+export interface BankTestPayment {
+  status: "pending" | "succeeded" | "failed"; mpesaReceipt: string | null; bankId: number;
+  accountNumber: string; paybill: string; createdAt: string;
+}
+export interface BankPaymentSetup { banks: BankOption[]; account: LandlordBankAccount | null; latestTest: BankTestPayment | null }
 export interface DarajaInput { shortcode: string; consumerKey: string; consumerSecret: string; passkey: string }
 export interface SmsMessage { id: string; recipient: string; body: string; segments: number; cost: number; status: string; template: string; at: string }
 export interface SmsOverview { balance: number; messages: SmsMessage[]; triggers: string[]; lastRecharge: { status: string; amount: number; at: string } | null }
@@ -173,7 +177,8 @@ export interface LandlordApi {
   paymentAccount(): Promise<PaymentAccount>;
   bankPaymentSetup(): Promise<BankPaymentSetup>;
   saveBankPaymentAccount(bankId: number, accountNumber: string | null): Promise<"saved" | "reenter_account_number">;
-  confirmBankPaymentTest(receipt: string): Promise<void>;
+  startBankPaymentTest(): Promise<{ message: string; amount: number }>;
+  confirmBankPaymentTest(): Promise<void>;
   connectDaraja(input: DarajaInput): Promise<{ status: "connected" | "failed"; reason?: string }>;
   setPaymentMode(mode: PaymentMode): Promise<void>;
   sms(): Promise<SmsOverview>;

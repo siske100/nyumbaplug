@@ -84,6 +84,40 @@ export async function tenantPay(d: PayDeps, i: {
   return { amount: bal.data, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
+/** A bank test uses the landlord's verified phone and the same platform Daraja STK integration as rent payments. */
+export async function bankTestPay(d: PayDeps, landlordId: string) {
+  const started = await d.rpc("start_bank_test_payment", { p_landlord: landlordId });
+  if (started.error) throw fromDb(started.error);
+  const row = (Array.isArray(started.data) ? started.data[0] : started.data) as
+    { id?: string; paybill?: string; account_number?: string; phone?: string } | null;
+  if (!row?.id || !/^\d{5,7}$/.test(row.paybill ?? "") || !/^\d{1,40}$/.test(row.account_number ?? "") || !row.phone) {
+    throw new HttpError(500, "We could not prepare the bank test payment. Please try again.");
+  }
+  const creds = bankPaybillCreds(d, row.paybill!);
+  try {
+    const push = await d.daraja.stkPush(creds, {
+      amount: 10,
+      msisdn: toMsisdn(row.phone),
+      accountRef: row.account_number!,
+      description: "Bank test",
+      callbackUrl: callbackUrl(d.env, "daraja-stk-callback", d.env.platformToken),
+    });
+    const bound = await d.rpc("bind_bank_test_payment", { p_id: row.id, p_checkout: push.checkoutRequestId });
+    if (bound.error) throw fromDb(bound.error);
+  } catch (e) {
+    const failed = await d.rpc("fail_bank_test_payment_by_id", { p_id: row.id });
+    if (failed.error) console.error("could not mark bank test payment failed", failed.error.code, failed.error.message);
+    if (e instanceof DarajaError && Object.keys(e.providerDetails ?? {}).length > 0) {
+      console.error("bank test prompt failed", e.message, e.providerDetails);
+    } else {
+      console.error("bank test prompt failed", e instanceof Error ? e.message : e);
+    }
+    if (e instanceof HttpError) throw e;
+    throw new HttpError(502, "We could not send the M-Pesa prompt. Please try again.");
+  }
+  return { amount: 10, message: "Check your verified phone and enter your M-Pesa PIN." };
+}
+
 /** A landlord pays their subscription or buys SMS credit. Always to the platform Paybill. */
 export async function platformPay(d: PayDeps, i: { landlordId: string; purpose: string; amount: number; phone: string }) {
   if (!Number.isInteger(i.amount)) throw new HttpError(400, "Enter a whole number of shillings");
@@ -98,6 +132,36 @@ export async function platformPay(d: PayDeps, i: { landlordId: string; purpose: 
 export async function handleStkCallback(d: PayDeps, token: string, body: unknown) {
   const cb = parseStkCallback(body);
   if (!cb) throw new HttpError(400, "Invalid callback");
+
+  const bankTestResult = await d.rpc("bank_test_payment_lookup", { p_checkout: cb.checkoutRequestId });
+  if (bankTestResult.error) throw fromDb(bankTestResult.error);
+  const bankTest = (Array.isArray(bankTestResult.data) ? bankTestResult.data[0] : bankTestResult.data) as
+    { kind: "bank_test"; status: string; paybill: string; phone: string } | null;
+  if (bankTest) {
+    if (!safeEqual(token, d.env.platformToken)) throw new HttpError(403, "Not allowed");
+    if (bankTest.status !== "pending") return ACK;
+    if (cb.resultCode !== 0) {
+      const failed = await d.rpc("fail_bank_test_payment", { p_checkout: cb.checkoutRequestId });
+      if (failed.error) throw fromDb(failed.error);
+      return ACK;
+    }
+    if (!cb.receipt || cb.amount !== 10 || cb.phone !== toMsisdn(bankTest.phone)) {
+      const failed = await d.rpc("fail_bank_test_payment", { p_checkout: cb.checkoutRequestId });
+      if (failed.error) throw fromDb(failed.error);
+      return ACK;
+    }
+    const check = await d.daraja.stkQuery(bankPaybillCreds(d, bankTest.paybill), cb.checkoutRequestId);
+    if (check.resultCode !== 0) {
+      if (check.resultCode !== -1) console.error("bank test callback not confirmed by Safaricom", cb.checkoutRequestId);
+      return ACK;
+    }
+    const confirmed = await d.rpc("complete_bank_test_payment", {
+      p_checkout: cb.checkoutRequestId, p_receipt: cb.receipt, p_amount: cb.amount, p_phone: cb.phone,
+    });
+    if (confirmed.error) throw fromDb(confirmed.error);
+    return ACK;
+  }
+
   const found = await d.rpc("attempt_lookup", { p_checkout: cb.checkoutRequestId });
   if (found.error) throw fromDb(found.error);
   const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string; bank_paybill_shortcode?: string | null } | null;

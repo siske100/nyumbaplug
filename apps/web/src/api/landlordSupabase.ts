@@ -344,12 +344,14 @@ export const landlordApi: LandlordApi = {
     };
   },
   async bankPaymentSetup(): Promise<BankPaymentSetup> {
-    const [banksResult, accountResult] = await Promise.all([
+    const [banksResult, accountResult, testResult] = await Promise.all([
       supabase.from("banks").select("id, name, paybill").eq("active", true).order("name"),
       supabase.from("landlord_bank_accounts").select("bank_id, account_number, verified, test_payment_receipt, verified_at").maybeSingle(),
+      supabase.from("bank_test_payments").select("status, mpesa_receipt, bank_id, account_number, paybill, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     const banks = ok(banksResult) as Row[];
     const account = ok(accountResult) as Row | null;
+    const test = ok(testResult) as Row | null;
     return {
       banks: banks.map((bank) => ({ id: num(bank.id), name: bank.name as string, paybill: bank.paybill as string })),
       account: account ? {
@@ -359,6 +361,14 @@ export const landlordApi: LandlordApi = {
         testPaymentReceipt: (account.test_payment_receipt as string | null) ?? null,
         verifiedAt: (account.verified_at as string | null) ?? null,
       } : null,
+      latestTest: test ? {
+        status: test.status as "pending" | "succeeded" | "failed",
+        mpesaReceipt: (test.mpesa_receipt as string | null) ?? null,
+        bankId: num(test.bank_id),
+        accountNumber: test.account_number as string,
+        paybill: test.paybill as string,
+        createdAt: test.created_at as string,
+      } : null,
     };
   },
   async saveBankPaymentAccount(bankId, accountNumber) {
@@ -367,8 +377,9 @@ export const landlordApi: LandlordApi = {
     if (data !== "saved" && data !== "reenter_account_number") throw new ApiError(500, "The bank account could not be saved");
     return data;
   },
-  async confirmBankPaymentTest(receipt) {
-    const { error } = await supabase.rpc("confirm_landlord_bank_account_test", { p_receipt: receipt });
+  startBankPaymentTest: () => callFunction<{ message: string; amount: number }>("daraja-stk", { action: "bank_test" }),
+  async confirmBankPaymentTest() {
+    const { error } = await supabase.rpc("confirm_landlord_bank_account_test");
     if (error) throw dbError(error);
   },
   connectDaraja: (input) => callFunction("payments-connect", input as unknown as Record<string, unknown>),

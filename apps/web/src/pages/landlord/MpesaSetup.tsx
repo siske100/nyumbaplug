@@ -15,27 +15,36 @@ export default function MpesaSetup() {
   const bankSetup = useLive("landlord", "bank-payment-setup", () => api.landlord.bankPaymentSetup());
   const connect = useLiveMutation("landlord", (v: Parameters<typeof api.landlord.connectDaraja>[0]) => api.landlord.connectDaraja(v));
   const saveBank = useLiveMutation("landlord", (v: { bankId: number; accountNumber: string | null }) => api.landlord.saveBankPaymentAccount(v.bankId, v.accountNumber));
-  const confirmBankTest = useLiveMutation("landlord", (receipt: string) => api.landlord.confirmBankPaymentTest(receipt));
+  const startBankTest = useLiveMutation("landlord", () => api.landlord.startBankPaymentTest());
+  const confirmBankTest = useLiveMutation("landlord", () => api.landlord.confirmBankPaymentTest());
   const mode = useLiveMutation("landlord", (m: PaymentMode) => api.landlord.setPaymentMode(m));
   const [daraja, setDaraja] = useState(blankDaraja);
   const [bankId, setBankId] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
-  const [bankTestReceipt, setBankTestReceipt] = useState("");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [showDarajaForm, setShowDarajaForm] = useState(false);
   const [result, setResult] = useState<string>();
   const [bankResult, setBankResult] = useState<string>();
   const a = acct.data;
   const bankAccount = bankSetup.data?.account ?? null;
+  const savedTest = bankSetup.data?.latestTest ?? null;
   const selectedBank = bankSetup.data?.banks.find((bank) => String(bank.id) === bankId);
+  const latestTest = bankAccount && selectedBank && savedTest?.bankId === bankAccount.bankId
+    && savedTest.accountNumber === bankAccount.accountNumber && savedTest.paybill === selectedBank.paybill
+    ? savedTest : null;
   const bankModeReady = !!bankAccount?.verified && !!bankSetup.data?.banks.some((bank) => bank.id === bankAccount.bankId);
 
   useEffect(() => {
     const saved = bankSetup.data?.account;
     setBankId(saved ? String(saved.bankId) : "");
     setBankAccountNumber(saved?.accountNumber ?? "");
-    setBankTestReceipt("");
-  }, [bankSetup.data]);
+  }, [bankSetup.data?.account?.bankId, bankSetup.data?.account?.accountNumber]);
+
+  useEffect(() => {
+    if (latestTest?.status !== "pending") return;
+    const timer = window.setInterval(() => { void bankSetup.refetch(); }, 2500);
+    return () => window.clearInterval(timer);
+  }, [latestTest?.status, bankSetup.refetch]);
 
   const submitDaraja = () => {
     const e: Record<string, string> = {};
@@ -67,7 +76,6 @@ export default function MpesaSetup() {
       saveBank.mutate({ bankId: selected, accountNumber: null }, {
         onSuccess: (status) => {
           setBankAccountNumber("");
-          setBankTestReceipt("");
           setBankResult(status === "reenter_account_number" ? "Bank changed. Enter and save the bank account number again before confirming a new test payment." : "Bank account saved.");
         },
       });
@@ -86,22 +94,7 @@ export default function MpesaSetup() {
         ? "Bank changed. Enter and save the bank account number again."
         : alreadyVerified
           ? "These bank details are unchanged and remain test-confirmed."
-          : "Bank account saved. Make a small test payment and confirm it below to enable this route."),
-    });
-  };
-
-  const confirmBankPayment = () => {
-    const receipt = bankTestReceipt.trim().toUpperCase();
-    if (!/^[A-Z0-9]{8,12}$/.test(receipt)) {
-      setErrs({ bankTestReceipt: "Enter the 8 to 12 character M-Pesa receipt from your test payment" });
-      return;
-    }
-    setErrs({});
-    confirmBankTest.mutate(receipt, {
-      onSuccess: () => {
-        setBankTestReceipt("");
-        setBankResult("Test payment confirmed. You can now select Bank Paybill for rent.");
-      },
+          : "Bank account saved. Send the verified KES 10 test payment below to enable this route."),
     });
   };
 
@@ -131,7 +124,7 @@ export default function MpesaSetup() {
         </div>
         <div className="grid gap-3 lg:grid-cols-3">
           {modeCard("own", "My Daraja Paybill", "Tenants pay through an M-Pesa prompt. Funds go to the Paybill connected with your Daraja credentials.", a?.status !== "connected")}
-          {modeCard("bank_paybill", "Bank Paybill", "Tenants receive an M-Pesa prompt addressed to your selected bank Paybill and account number.", !bankModeReady, "Save your bank details and confirm a small test payment below.")}
+          {modeCard("bank_paybill", "Bank Paybill", "Tenants receive an M-Pesa prompt addressed to your selected bank Paybill and account number.", !bankModeReady, "Save your bank details and complete the verified KES 10 test payment below.")}
           {modeCard("platform", "Platform Paybill", "Rent goes to the platform Paybill and is paid out to your saved payout destination.", false)}
         </div>
         <ErrorNote error={mode.error} />
@@ -140,7 +133,7 @@ export default function MpesaSetup() {
       <Panel className="grid gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl">Bank Paybill account</h2>
-          {bankAccount && <Chip tone={bankAccount.verified ? "ok" : "neutral"}>{bankAccount.verified ? "Test payment confirmed" : "Test payment required"}</Chip>}
+          {bankAccount && <Chip tone={bankAccount.verified ? "ok" : "neutral"}>{bankAccount.verified ? "Test payment confirmed" : latestTest?.status === "pending" ? "Waiting for M-Pesa" : "Test payment required"}</Chip>}
         </div>
         <p className="text-sm text-graphite-300">Use a business bank account registered to your business, not a personal account. Bank settlement is not instant; timing depends on the bank.</p>
         {bankSetup.data?.banks.length === 0 && <p role="status" className="text-sm text-graphite-300">No receiving banks are configured yet. Bank options will appear after official bank Paybill details are added.</p>}
@@ -154,7 +147,6 @@ export default function MpesaSetup() {
             const value = event.target.value;
             setBankId(value);
             if (value !== bankId) setBankAccountNumber("");
-            setBankTestReceipt("");
             setErrs({});
           }}
         >
@@ -175,23 +167,29 @@ export default function MpesaSetup() {
         <div><Button loading={saveBank.isPending} disabled={!selectedBank} onClick={submitBankAccount}>Save bank details</Button></div>
         {bankResult && <p role="status" className="text-sm text-graphite-200">{bankResult}</p>}
 
-        {bankAccount?.accountNumber && !bankAccount.verified && selectedBank && (
+        {bankAccount?.accountNumber && !bankAccount.verified && selectedBank
+          && bankAccount.bankId === selectedBank.id && bankAccount.accountNumber === bankAccountNumber && (
           <div className="grid gap-3 rounded-xl border border-ember-400/25 bg-ember-500/5 p-4">
             <p className="text-sm text-graphite-200">
-              Make a small test payment from M-Pesa to <strong>{selectedBank.name} Paybill {selectedBank.paybill}</strong>,
-              using account number <strong>{bankAccount.accountNumber}</strong>. After you see it reach your bank account,
-              enter the M-Pesa receipt below. Confirming this records your attestation; it does not independently verify the receipt with Safaricom.
+              Send a KES 10 test payment to <strong>{selectedBank.name} Paybill {selectedBank.paybill}</strong>,
+              using account number <strong>{bankAccount.accountNumber}</strong>. We will send the M-Pesa prompt to your verified phone.
+              After Safaricom confirms the payment, confirm that it reached your bank account.
             </p>
-            <Field
-              label="Test payment M-Pesa receipt"
-              autoComplete="off"
-              maxLength={12}
-              value={bankTestReceipt}
-              onChange={(event) => setBankTestReceipt(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12))}
-              error={errs.bankTestReceipt}
-            />
+            {latestTest?.status === "pending" && <p role="status" className="text-sm text-graphite-200">Prompt sent. Complete it on your phone; waiting for Safaricom's confirmation.</p>}
+            {latestTest?.status === "succeeded" && (
+              <p role="status" className="text-sm text-graphite-200">
+                Safaricom confirmed KES 10{latestTest.mpesaReceipt ? ` (receipt ${latestTest.mpesaReceipt})` : ""}.
+                Confirm only after the funds arrive in your bank account.
+              </p>
+            )}
+            {latestTest?.status === "failed" && <p role="alert" className="text-sm text-danger">Safaricom did not confirm the test payment. You can send another test payment.</p>}
+            <ErrorNote error={startBankTest.error} />
             <ErrorNote error={confirmBankTest.error} />
-            <div><Button variant="glass" loading={confirmBankTest.isPending} onClick={confirmBankPayment}>Confirm test payment</Button></div>
+            <div>
+              {latestTest?.status === "succeeded"
+                ? <Button variant="glass" loading={confirmBankTest.isPending} onClick={() => confirmBankTest.mutate()}>I received KES 10 in my bank account</Button>
+                : <Button variant="glass" loading={startBankTest.isPending} disabled={latestTest?.status === "pending"} onClick={() => startBankTest.mutate()}>Send test payment</Button>}
+            </div>
           </div>
         )}
         {bankAccount?.verified && bankAccount.testPaymentReceipt && (
