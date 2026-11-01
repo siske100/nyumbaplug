@@ -157,7 +157,30 @@ Deno.test("bank test callback: rejects wrong token and does not record an unconf
   const wrongAmount = fake({ bank_test_payment_lookup: () => ({ data: { kind: "bank_test", status: "pending", paybill: "523456", phone: "0712345678" } }) });
   await handleStkCallback(payDeps(wrongAmount, mkDaraja().d), "PLATFORMTOKEN", cb());
   eq(wrongAmount.names(), ["bank_test_payment_lookup", "fail_bank_test_payment"]);
+  eq(wrongAmount.last("fail_bank_test_payment"), {
+    p_checkout: "ws_CO_1", p_code: 0, p_desc: "ok", p_reason: "Safaricom reported an amount other than KES 10",
+  });
   restore();
+});
+
+Deno.test("bank test callback: records Safaricom rejection and conclusive STK-query failures", async () => {
+  const pending = { data: { kind: "bank_test" as const, status: "pending", paybill: "523456", phone: "0712345678" } };
+  const rejected = fake({ bank_test_payment_lookup: () => pending });
+  await handleStkCallback(payDeps(rejected, mkDaraja().d), "PLATFORMTOKEN", cb({ ResultCode: 1032, ResultDesc: "Request cancelled by user" }));
+  eq(rejected.last("fail_bank_test_payment"), {
+    p_checkout: "ws_CO_1", p_code: 1032, p_desc: "Request cancelled by user",
+    p_reason: "The M-Pesa prompt was cancelled. Try again and approve it on your phone.",
+  });
+
+  const queryFailure = fake({ bank_test_payment_lookup: () => pending });
+  const daraja = mkDaraja({ stkQuery: async () => ({ resultCode: 2001, resultDesc: "Invalid PIN" }) });
+  await handleStkCallback(payDeps(queryFailure, daraja.d), "PLATFORMTOKEN", cb({ CallbackMetadata: { Item: [
+    { Name: "Amount", Value: 10 }, { Name: "MpesaReceiptNumber", Value: "NLJ7RT61SV" }, { Name: "PhoneNumber", Value: 254712345678 },
+  ] } }));
+  eq(queryFailure.last("fail_bank_test_payment"), {
+    p_checkout: "ws_CO_1", p_code: 2001, p_desc: "Invalid PIN",
+    p_reason: "Safaricom's payment status check failed (code 2001). Try again or contact support.",
+  });
 });
 
 // ---------------- landlords buying ----------------

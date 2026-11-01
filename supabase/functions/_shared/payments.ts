@@ -84,7 +84,7 @@ export async function tenantPay(d: PayDeps, i: {
   return { amount: bal.data, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
-/** A bank test uses the landlord's verified phone and the same platform Daraja STK integration as rent payments. */
+/** A bank test uses the landlord's registered phone and the same platform Daraja STK integration as rent payments. */
 export async function bankTestPay(d: PayDeps, landlordId: string) {
   const started = await d.rpc("start_bank_test_payment", { p_landlord: landlordId });
   if (started.error) throw fromDb(started.error);
@@ -105,7 +105,9 @@ export async function bankTestPay(d: PayDeps, landlordId: string) {
     const bound = await d.rpc("bind_bank_test_payment", { p_id: row.id, p_checkout: push.checkoutRequestId });
     if (bound.error) throw fromDb(bound.error);
   } catch (e) {
-    const failed = await d.rpc("fail_bank_test_payment_by_id", { p_id: row.id });
+    const failed = await d.rpc("fail_bank_test_payment_by_id", {
+      p_id: row.id, p_reason: "The M-Pesa prompt could not be sent. Check the Paybill setup and try again.",
+    });
     if (failed.error) console.error("could not mark bank test payment failed", failed.error.code, failed.error.message);
     if (e instanceof DarajaError && Object.keys(e.providerDetails ?? {}).length > 0) {
       console.error("bank test prompt failed", e.message, e.providerDetails);
@@ -141,18 +143,36 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
     if (!safeEqual(token, d.env.platformToken)) throw new HttpError(403, "Not allowed");
     if (bankTest.status !== "pending") return ACK;
     if (cb.resultCode !== 0) {
-      const failed = await d.rpc("fail_bank_test_payment", { p_checkout: cb.checkoutRequestId });
+      const reason = cb.resultCode === 1032
+        ? "The M-Pesa prompt was cancelled. Try again and approve it on your phone."
+        : `Safaricom could not complete the payment (code ${cb.resultCode}). Try again or contact support.`;
+      const failed = await d.rpc("fail_bank_test_payment", {
+        p_checkout: cb.checkoutRequestId, p_code: cb.resultCode, p_desc: cb.resultDesc, p_reason: reason,
+      });
       if (failed.error) throw fromDb(failed.error);
       return ACK;
     }
-    if (!cb.receipt || cb.amount !== 10 || cb.phone !== toMsisdn(bankTest.phone)) {
-      const failed = await d.rpc("fail_bank_test_payment", { p_checkout: cb.checkoutRequestId });
+    const mismatch = !cb.receipt ? "Safaricom did not include a payment receipt in its callback"
+      : cb.amount !== 10 ? "Safaricom reported an amount other than KES 10"
+        : cb.phone !== toMsisdn(bankTest.phone) ? "The payment came from a different phone number"
+          : null;
+    if (mismatch) {
+      const failed = await d.rpc("fail_bank_test_payment", {
+        p_checkout: cb.checkoutRequestId, p_code: cb.resultCode, p_desc: cb.resultDesc, p_reason: mismatch,
+      });
       if (failed.error) throw fromDb(failed.error);
       return ACK;
     }
     const check = await d.daraja.stkQuery(bankPaybillCreds(d, bankTest.paybill), cb.checkoutRequestId);
     if (check.resultCode !== 0) {
-      if (check.resultCode !== -1) console.error("bank test callback not confirmed by Safaricom", cb.checkoutRequestId);
+      if (check.resultCode !== -1) {
+        const failed = await d.rpc("fail_bank_test_payment", {
+          p_checkout: cb.checkoutRequestId, p_code: check.resultCode, p_desc: check.resultDesc,
+          p_reason: `Safaricom's payment status check failed (code ${check.resultCode}). Try again or contact support.`,
+        });
+        if (failed.error) throw fromDb(failed.error);
+        console.error("bank test callback not confirmed by Safaricom", cb.checkoutRequestId, check.resultCode);
+      }
       return ACK;
     }
     const confirmed = await d.rpc("complete_bank_test_payment", {

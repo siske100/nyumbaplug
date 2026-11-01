@@ -6,7 +6,7 @@ Landlords select one route on the Payment setup page:
 
 - **Platform Paybill:** rent reaches the platform Paybill and is paid out to the landlord's saved destination through the existing manual payout process.
 - **Landlord's own Daraja Paybill:** the landlord connects their Daraja credentials. M-Pesa prompts and manual Paybill payments go to their own Paybill.
-- **Bank Paybill:** tenants receive an M-Pesa prompt addressed to the configured bank Paybill and the landlord's bank account number. After saving bank details, the landlord sends a KES 10 test payment to that bank Paybill from their verified phone. Safaricom's callback and STK query must confirm it, and the landlord must then confirm the funds arrived in the bank account before the route can be selected. A receipt typed by the landlord is never accepted as proof. Use a business bank account; settlement is not instant.
+- **Bank Paybill:** tenants receive an M-Pesa prompt addressed to the configured bank Paybill and the landlord's bank account number. After saving bank details, the landlord sends a KES 10 test payment to that bank Paybill from the phone number entered during registration. Safaricom's callback and STK query must confirm it, and the landlord must then confirm the funds arrived in the bank account before the route can be selected. A receipt typed by the landlord is never accepted as proof. Use a business bank account; settlement is not instant.
 
 Landlords can remove their saved bank account details and enter replacement details when their bank account changes. Removing the saved details switches rent back to Platform Paybill, clears verification, and retains the test-payment history.
 

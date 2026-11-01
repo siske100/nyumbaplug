@@ -344,14 +344,16 @@ export const landlordApi: LandlordApi = {
     };
   },
   async bankPaymentSetup(): Promise<BankPaymentSetup> {
-    const [banksResult, accountResult, testResult] = await Promise.all([
+    const [banksResult, accountResult, testResult, profileResult] = await Promise.all([
       supabase.from("banks").select("id, name, paybill").eq("active", true).order("name"),
       supabase.from("landlord_bank_accounts").select("bank_id, account_number, verified, test_payment_receipt, verified_at").maybeSingle(),
-      supabase.from("bank_test_payments").select("status, mpesa_receipt, bank_id, account_number, paybill, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("bank_test_payments").select("status, mpesa_receipt, bank_id, account_number, paybill, failure_reason, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("profiles").select("phone, phone_verified").maybeSingle(),
     ]);
     const banks = ok(banksResult) as Row[];
     const account = ok(accountResult) as Row | null;
     const test = ok(testResult) as Row | null;
+    const profile = ok(profileResult) as Row | null;
     return {
       banks: banks.map((bank) => ({ id: num(bank.id), name: bank.name as string, paybill: bank.paybill as string })),
       account: account ? {
@@ -367,8 +369,11 @@ export const landlordApi: LandlordApi = {
         bankId: num(test.bank_id),
         accountNumber: test.account_number as string,
         paybill: test.paybill as string,
+        failureReason: (test.failure_reason as string | null) ?? null,
         createdAt: test.created_at as string,
       } : null,
+      phone: (profile?.phone as string | null) ?? null,
+      phoneVerified: Boolean(profile?.phone_verified),
     };
   },
   async saveBankPaymentAccount(bankId, accountNumber) {

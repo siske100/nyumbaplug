@@ -138,6 +138,10 @@ export default function MpesaSetup() {
           {bankAccount && <Chip tone={bankAccount.verified ? "ok" : "neutral"}>{bankAccount.verified ? "Test payment confirmed" : latestTest?.status === "pending" ? "Waiting for M-Pesa" : "Test payment required"}</Chip>}
         </div>
         <p className="text-sm text-graphite-300">Use a business bank account registered to your business, not a personal account. Bank settlement is not instant; timing depends on the bank.</p>
+        <p className="text-sm text-graphite-200">
+          M-Pesa test prompt number: <strong>{bankSetup.data?.phone ?? "No phone number saved"}</strong>
+          {bankSetup.data?.phone && !bankSetup.data.phoneVerified && <span className="text-graphite-400"> (number entered during registration)</span>}
+        </p>
         {bankSetup.data?.banks.length === 0 && <p role="status" className="text-sm text-graphite-300">No receiving banks are configured yet. Bank options will appear after official bank Paybill details are added.</p>}
         <ErrorNote error={bankSetup.error} />
         <SelectField
@@ -211,7 +215,7 @@ export default function MpesaSetup() {
           <div className="grid gap-3 rounded-xl border border-ember-400/25 bg-ember-500/5 p-4">
             <p className="text-sm text-graphite-200">
               Send a KES 10 test payment to <strong>{selectedBank.name} Paybill {selectedBank.paybill}</strong>,
-              using account number <strong>{bankAccount.accountNumber}</strong>. We will send the M-Pesa prompt to your verified phone.
+              using account number <strong>{bankAccount.accountNumber}</strong>. We will send the M-Pesa prompt to <strong>{bankSetup.data?.phone ?? "the phone number saved to your account"}</strong>.
               After Safaricom confirms the payment, confirm that it reached your bank account.
             </p>
             {latestTest?.status === "pending" && <p role="status" className="text-sm text-graphite-200">Prompt sent. Complete it on your phone; waiting for Safaricom's confirmation.</p>}
@@ -221,7 +225,11 @@ export default function MpesaSetup() {
                 Confirm only after the funds arrive in your bank account.
               </p>
             )}
-            {latestTest?.status === "failed" && <p role="alert" className="text-sm text-danger">Safaricom did not confirm the test payment. You can send another test payment.</p>}
+            {latestTest?.status === "failed" && (
+              <p role="alert" className="text-sm text-danger">
+                {latestTest.failureReason ?? "Safaricom did not confirm the test payment."} You can send another test payment.
+              </p>
+            )}
             <ErrorNote error={startBankTest.error} />
             <ErrorNote error={confirmBankTest.error} />
             <div>

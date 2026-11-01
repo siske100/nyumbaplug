@@ -216,7 +216,7 @@ describe("money", () => {
   });
   it("bank accounts require landlord confirmation, reset on bank changes, and stay RLS protected", async () => {
     const bank1 = (await sql(db, "insert into banks(name,paybill) values('Test Bank','523456') returning id"))[0].id;
-    await sql(db, "update profiles set phone='0712345678' where id=$1", [w.la]);
+    await sql(db, "update profiles set phone='0712345678', phone_verified=false where id=$1", [w.la]);
     await rejects(as(db, user(w.la), "update landlord_bank_accounts set verified=true"), /permission denied/);
     await rejects(as(db, user(w.la), "select start_bank_test_payment($1)", [w.la]), /permission denied/);
     await as(db, user(w.la), "select save_landlord_bank_account($1,'1234567890123456789012345678901234567890')", [bank1]);
@@ -243,9 +243,22 @@ describe("money", () => {
     await rejects(as(db, user(w.la), "select * from pending_stk_attempts()"), /permission denied/);
     await rejects(as(db, anon, "select * from pending_stk_attempts()"), /permission denied/);
   });
+  it("bank test failures retain Safaricom diagnostics without allowing landlord writes", async () => {
+    const bank = (await sql(db, "insert into banks(name,paybill) values('Diagnostic Bank','523459') returning id"))[0].id;
+    await sql(db, "update profiles set phone='0712345678', phone_verified=false where id=$1", [w.la]);
+    assert.equal((await as(db, user(w.la), "select save_landlord_bank_account($1,'1122334455') status", [bank]))[0].status, "reenter_account_number");
+    await as(db, user(w.la), "select save_landlord_bank_account($1,'1122334455')", [bank]);
+    const [test] = await as(db, server, "select * from start_bank_test_payment($1)", [w.la]);
+    await as(db, server, "select bind_bank_test_payment($1,'bank_CO_FAIL')", [test.id]);
+    await rejects(as(db, user(w.la), "select fail_bank_test_payment('bank_CO_FAIL',1032,'cancelled','cancel reason')"), /permission denied/);
+    await as(db, server, "select fail_bank_test_payment('bank_CO_FAIL',1032,'cancelled','cancel reason')");
+    assert.deepEqual((await as(db, user(w.la),
+      "select status, callback_result_code, callback_result_desc, failure_reason from bank_test_payments"))[0],
+    { status: "failed", callback_result_code: 1032, callback_result_desc: "cancelled", failure_reason: "cancel reason" });
+  });
   it("landlords can remove their saved bank account and add replacement details", async () => {
     const bank = (await sql(db, "insert into banks(name,paybill) values('Replacement Bank','523458') returning id"))[0].id;
-    await sql(db, "update profiles set phone='0712345678' where id=$1", [w.la]);
+    await sql(db, "update profiles set phone='0712345678', phone_verified=false where id=$1", [w.la]);
     assert.equal((await as(db, user(w.la), "select save_landlord_bank_account($1,'111222333') status", [bank]))[0].status, "reenter_account_number");
     await as(db, user(w.la), "select save_landlord_bank_account($1,'111222333')", [bank]);
     const [test] = await as(db, server, "select * from start_bank_test_payment($1)", [w.la]);
