@@ -40,7 +40,7 @@ const sections = [
   {
     title: "Payments and messages",
     content: <>
-      <p>M-Pesa payments are handled through Safaricom and the configured Paybill flow. The platform stores records needed to reconcile payments and manage landlord balances; it does not store your M-Pesa PIN. Depending on the landlord's setup, rent may go to the platform Paybill for later payout or directly to the landlord's own Paybill.</p>
+      <p>M-Pesa payments are handled through Safaricom and the configured Paybill flow. The platform stores records needed to reconcile payments and manage landlord balances; it does not store your M-Pesa PIN. Rent collection is enabled only for a landlord's verified direct payment account. NyumbaPlug does not collect or hold rent.</p>
       <p>SMS are sent through the configured SMS provider. We process the destination phone number, message text and delivery information to send and track requested messages. Messages sent from a landlord's wallet are also recorded against that landlord's SMS balance.</p>
     </>,
   },

@@ -1,12 +1,52 @@
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, dbError } from "./helpers";
-import type { AdminApi, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState } from "./types";
+import type { AdminApi, AdminDashboardData, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState, MarketplaceSettlement, VisitStatus } from "./types";
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => Number(v ?? 0);
 
 export const adminApi: AdminApi = {
+  async dashboard(): Promise<AdminDashboardData> {
+    const [summary, monthly, counties, marketers] = await Promise.all([
+      supabase.from("admin_dashboard_summary").select("*").maybeSingle(),
+      supabase.from("admin_dashboard_daily").select("month, bookings, revenue").order("month"),
+      supabase.from("admin_dashboard_counties").select("county, bookings, share"),
+      supabase.from("admin_dashboard_marketer_performance").select("marketer_id, marketer_name, listings, bookings, earnings"),
+    ]);
+    if (summary.error) throw dbError(summary.error);
+    if (monthly.error) throw dbError(monthly.error);
+    if (counties.error) throw dbError(counties.error);
+    if (marketers.error) throw dbError(marketers.error);
+    const s = summary.data as Row | null;
+    if (!s) throw new ApiError(403, "Admin dashboard data is unavailable for this account");
+    return {
+      totalProperties: num(s.total_properties),
+      monthlyBookings: num(s.monthly_bookings),
+      totalRevenue: num(s.total_revenue),
+      activeMarketers: num(s.active_marketers),
+      trend: (monthly.data as Row[]).map((r) => ({
+        month: new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(r.month as string)),
+        bookings: num(r.bookings), revenue: num(r.revenue),
+      })),
+      counties: (counties.data as Row[]).map((r) => ({
+        county: r.county as string, bookings: num(r.bookings), share: num(r.share),
+      })),
+      topMarketers: (marketers.data as Row[]).map((r) => ({
+        id: r.marketer_id as string, name: (r.marketer_name as string) ?? "Marketer",
+        listings: num(r.listings), bookings: num(r.bookings), earnings: num(r.earnings),
+      })),
+    };
+  },
+
+  async bookingStatuses() {
+    const { data, error } = await supabase.from("admin_dashboard_booking_statuses").select("status, booking_count").order("status");
+    if (error) throw dbError(error);
+    return (data as Row[]).map((r) => ({
+        status: r.status as VisitStatus, count: num(r.booking_count),
+    }));
+  },
+
   async landlords() {
     const { data, error } = await supabase.from("admin_landlord_overview").select("*").order("full_name");
     if (error) throw dbError(error);
@@ -86,6 +126,23 @@ export const adminApi: AdminApi = {
   },
   async markPayoutPaid(id, ref) {
     const { error } = await supabase.rpc("admin_mark_payout_paid", { p_payout: id, p_ref: ref });
+    if (error) throw dbError(error);
+  },
+  async marketplaceSettlements(): Promise<MarketplaceSettlement[]> {
+    const { data, error } = await supabase.from("admin_marketplace_settlements").select("*").order("viewing_date");
+    if (error) throw dbError(error);
+    return ((data ?? []) as Row[]).map((r) => ({
+      id: r.id as string, date: r.viewing_date as string, timeWindow: r.time_window as string,
+      amount: num(r.amount), status: r.status as MarketplaceSettlement["status"],
+      bookingPhone: r.booking_phone as string, clientName: r.client_name as string,
+      marketerName: r.marketer_name as string, marketerPhone: r.marketer_phone as string,
+      marketerAmount: num(r.marketer_amount), platformFee: num(r.platform_fee),
+    }));
+  },
+  async settleMarketplaceBooking(id, action, ref) {
+    const { error } = await supabase.rpc("admin_settle_marketplace_booking", {
+      p_booking: id, p_action: action, p_ref: ref,
+    });
     if (error) throw dbError(error);
   },
 };

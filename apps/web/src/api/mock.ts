@@ -11,11 +11,14 @@ import type { Api, KycStatus, LandlordHouse, LandlordSummary, ListingFilters, Pu
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 let currentUserId: string | null = null;
 let pendingEmail = "";
+let pendingRole: Role = "landlord";
 let kycAttempts = 0;
 
 const users: Record<string, Session> = {
   "u-landlord": { userId: "u-landlord", role: "landlord", name: "Wanjiku", landlordState: "active" },
   "u-tenant": { userId: "u-tenant", role: "tenant", name: "Brian" },
+  "u-marketer": { userId: "u-marketer", role: "marketer", name: "Demo Marketer", phoneVerified: true, marketerActive: true },
+  "u-client": { userId: "u-client", role: "client", name: "Demo Client", phoneVerified: true },
   "u-admin": { userId: "u-admin", role: "admin", name: "Joel" },
 };
 
@@ -65,12 +68,19 @@ export const mockApi: Api = {
     await wait(300);
     users["u-new"] = { userId: "u-new", role: "landlord", name, email, phone, landlordState: "pending_email" };
     pendingEmail = email;
+    pendingRole = "landlord";
+  },
+  async signUpMarketplace({ name, email, phone }, role): Promise<void> {
+    await wait(300);
+    users["u-new"] = { userId: "u-new", role, name, email, phone, phoneVerified: false, marketerActive: false };
+    pendingEmail = email;
+    pendingRole = role;
   },
   async verifyEmailCode(email: string, code: string): Promise<Session | null> {
     await wait(300);
     if (email !== pendingEmail || code !== "123456") throw new ApiError(400, "That code is not right or has expired");
     currentUserId = "u-new";
-    users["u-new"]!.landlordState = users["u-new"]!.phone ? "pending_kyc" : "pending_phone";
+    if (pendingRole === "landlord") users["u-new"]!.landlordState = users["u-new"]!.phone ? "pending_kyc" : "pending_phone";
     return users["u-new"]!;
   },
   async resendEmailCode(): Promise<void> { await wait(200); },
@@ -113,7 +123,47 @@ export const mockApi: Api = {
 
   async mfaBegin() { throw new ApiError(503, "Connect the backend to use the admin area"); },
   async mfaVerify() { throw new ApiError(503, "Connect the backend to use the admin area"); },
-  admin: new Proxy({} as Api["admin"], { get: () => async () => { throw new ApiError(503, "Connect the backend to use the admin area"); } }),
+  admin: new Proxy(Object.assign({} as Api["admin"], {
+    async dashboard() {
+      await wait();
+      const today = new Date();
+      const trend = Array.from({ length: 30 }, (_, index) => {
+        const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29 + index);
+        return {
+          month: new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date),
+          bookings: 0,
+          revenue: 0,
+        };
+      });
+      return {
+        totalProperties: houses.length,
+        monthlyBookings: 0,
+        totalRevenue: 0,
+        activeMarketers: Object.values(users).filter((account) => account.role === "marketer" && account.marketerActive).length,
+        trend,
+        counties: [],
+        topMarketers: [],
+      };
+    },
+    async bookingStatuses() {
+      await wait();
+      return [
+        { status: "new", count: 0 },
+        { status: "contacted", count: 0 },
+        { status: "scheduled", count: 0 },
+        { status: "rescheduled", count: 0 },
+        { status: "done", count: 0 },
+        { status: "no_show", count: 0 },
+        { status: "house_taken", count: 0 },
+        { status: "cancelled", count: 0 },
+      ];
+    },
+  }), {
+    get(target, key, receiver) {
+      if (Reflect.has(target, key)) return Reflect.get(target, key, receiver);
+      return async () => { throw new ApiError(503, "Connect the backend to use the admin area"); };
+    },
+  }),
 
   async listListings(filters: ListingFilters): Promise<PublicListing[]> {
     await wait();
@@ -147,8 +197,11 @@ export const mockApi: Api = {
     async houses(): Promise<LandlordHouse[]> {
       const s = requireSession("landlord");
       await wait();
-      return houses.filter((h) => h.landlordId === s.userId).map(toPublic);
+      return houses.filter((h) => h.landlordId === s.userId).map((house) => ({ ...toPublic(house), coverPhoto: "/apartment-building.jpg" }));
     },
+    async tenants() { await wait(); requireSession("landlord"); return []; },
+    async visits() { await wait(); requireSession("landlord"); return []; },
+    async dashboardLedger() { await wait(); requireSession("landlord"); return []; },
     async setVacantUnits(houseId: string, vacant: number): Promise<LandlordHouse> {
       const s = requireSession("landlord"); // identity comes from the session, never from the request
       await wait(200);
@@ -161,6 +214,7 @@ export const mockApi: Api = {
       return toPublic(row);
     },
   }),
+  marketplace: unavailable<Api["marketplace"]>({}),
   tenant: unavailable<Api["tenant"]>({
     async home(): Promise<TenantHome> {
       requireSession("tenant");
@@ -184,7 +238,9 @@ export const mockApi: Api = {
           emergencyPhone: "0712345678",
           emergencyRelationship: "Mother",
         },
-        paymentMode: "platform",
+        paymentMode: "unavailable",
+        manualBank: null,
+        manualClaims: [],
         balance: 6500,
         charged: 13000,
         paid: 6500,

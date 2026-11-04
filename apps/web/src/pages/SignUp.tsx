@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { CodeField } from "@/components/ui/CodeField";
 import { Field } from "@/components/ui/Field";
 import { Panel } from "@/components/ui/Panel";
-import { useSession } from "@/features/auth/useSession";
+import { homeFor, useSession } from "@/features/auth/useSession";
 import { useCooldown } from "@/lib/useCooldown";
 import { ApiError } from "@/lib/queryClient";
 import { qk } from "@/lib/queryKeys";
@@ -18,6 +18,7 @@ export default function SignUp() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const returnTo = params.get("next");
   const [email, setEmail] = useState(params.get("confirm") ?? "");
   const [step, setStep] = useState<"form" | "code">(params.get("confirm") ? "code" : "form");
   const [form, setForm] = useState({ name: "", phone: "", password: "" });
@@ -25,15 +26,25 @@ export default function SignUp() {
   const [code, setCode] = useState("");
   const cooldown = useCooldown();
 
-  const create = useMutation({ mutationFn: () => api.signUpLandlord({ ...(landlordSignUpSchema.parse({ ...form, email })) }), onSuccess: () => { setStep("code"); cooldown.start(60); } });
+  const create = useMutation({
+    mutationFn: () => {
+      const input = landlordSignUpSchema.parse({ ...form, email });
+      return api.signUpLandlord(input);
+    },
+    onSuccess: () => { setStep("code"); cooldown.start(60); },
+  });
   const verify = useMutation({
     mutationFn: () => api.verifyEmailCode(email, code),
-    onSuccess: (s) => { qc.setQueryData(qk.session, s); navigate("/landlord", { replace: true }); },
+    onSuccess: (s) => {
+      qc.setQueryData(qk.session, s);
+      const fallback = s ? homeFor(s.role) : "/landlord";
+      navigate(returnTo?.startsWith("/") ? returnTo : fallback, { replace: true });
+    },
   });
   const resend = useMutation({ mutationFn: () => api.resendEmailCode(email), onSuccess: () => cooldown.start(60) });
   const google = useMutation({ mutationFn: () => api.signInWithGoogle() });
 
-  if (session) return <Navigate to="/landlord" replace />;
+  if (session) return <Navigate to={homeFor(session.role)} replace />;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

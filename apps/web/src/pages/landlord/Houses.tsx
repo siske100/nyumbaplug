@@ -1,5 +1,6 @@
 import { Minus, Pencil, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { houseSchema, HOUSE_TYPES, MAX_PHOTOS, MIN_PHOTOS, validatePhoto, type HouseType } from "@rh/shared";
 import { api } from "@/api";
 import type { HouseForEdit, HouseInput } from "@/api/types";
@@ -94,17 +95,22 @@ function HouseForm({ onDone, initial, houseId }: { onDone: () => void; initial?:
 }
 
 export default function Houses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data, isPending, isError } = useLandlordHouses();
   const setVacant = useSetVacantUnits();
   const [problem, setProblem] = useState<{ id: string; message: string } | null>(null);
-  const [posting, setPosting] = useState(false);
+  const [posting, setPosting] = useState(() => searchParams.get("new") === "1");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const closePosting = () => {
+    setPosting(false);
+    if (searchParams.has("new")) setSearchParams({}, { replace: true });
+  };
   const change = (id: string, vacant: number) => { setProblem(null); setVacant.mutate({ houseId: id, vacant }, { onError: (e) => setProblem({ id, message: e.message }) }); };
 
   return (
     <div className="grid gap-4">
-      <PageHead title="Houses" sub="Edit your listing details and keep the vacant count accurate. At zero, a listing leaves search and stops taking viewing requests." action={!posting && !editingId && <Button magnetic onClick={() => setPosting(true)}>Post a house</Button>} />
-      {posting && <PostHouse onDone={() => setPosting(false)} />}
+      <PageHead title="My properties" sub="Manage your property listings and unit availability. Full properties are hidden from search and stop taking viewing requests." action={!posting && !editingId && <Button magnetic onClick={() => setPosting(true)}>Add property</Button>} />
+      {posting && <PostHouse onDone={closePosting} />}
       {isError && <Panel className="p-6">We could not load your houses. Refresh to try again.</Panel>}
       {isPending && [0, 1].map((i) => <div key={i} className="skeleton h-24" />)}
       {data?.length === 0 && !posting && <Panel className="p-4"><ToLet title="No houses yet" note="Post your first house with 3 to 7 photos and it appears in search straight away." /></Panel>}

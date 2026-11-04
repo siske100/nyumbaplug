@@ -51,7 +51,7 @@ export default function SignIn() {
       <div className="ambient" aria-hidden />
       <Panel tone="hero" className="w-full max-w-md p-7 sm:p-9">
         <h1 className="text-3xl">Sign in</h1>
-        <p className="mt-1 text-graphite-300">Landlords, tenants and administrators sign in here.</p>
+        <p className="mt-1 text-graphite-300">Landlords, tenants and administrators sign in here. Viewers can request a viewing without an account.</p>
 
         <Button variant="glass" className="mt-6 w-full" loading={google.isPending} onClick={() => google.mutate()}>
           <svg viewBox="0 0 24 24" className="size-4.5" aria-hidden><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8a6 6 0 1 1 0-12c1.9 0 3.2.8 3.9 1.5l2.7-2.6A9.9 9.9 0 0 0 12 2a10 10 0 1 0 0 20c5.8 0 9.6-4 9.6-9.8 0-.7-.1-1.2-.2-2z"/></svg>

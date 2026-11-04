@@ -4,7 +4,15 @@ import { api } from "@/api";
 import type { Role } from "@/api/types";
 import { qk } from "@/lib/queryKeys";
 
-export const homeFor = (role: Role) => (role === "landlord" ? "/landlord" : role === "admin" ? "/admin" : "/tenant");
+export const homeFor = (role: Role) => {
+  switch (role) {
+    case "landlord": return "/landlord";
+    case "admin": return "/admin";
+    case "marketer":
+    case "client": return "/";
+    default: return "/tenant";
+  }
+};
 
 export function useSession() {
   return useQuery({ queryKey: qk.session, queryFn: () => api.getSession(), staleTime: 5 * 60_000, retry: false });

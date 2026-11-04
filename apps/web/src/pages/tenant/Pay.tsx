@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { CalendarDays, CircleDollarSign, House, ReceiptText } from "lucide-react";
 import { api } from "@/api";
 import { HouseLoader, PayCelebration } from "@/components/motion/Doodles";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
-import { Stats } from "@/components/ui/Stats";
 import { useSession } from "@/features/auth/useSession";
 import { useLive, useLiveMutation } from "@/features/live";
 import { fmtDate, formatKes } from "@/lib/format";
@@ -19,7 +19,10 @@ export default function Pay() {
   const before = useRef<{ balance: number; attemptId: string | null } | null>(null);
   const home = useLive("tenant", "home", () => api.tenant.home(), { refetchInterval: waiting ? 4000 : false });
   const pay = useLiveMutation<void, { message: string; amount: number }>("tenant", () => api.tenant.pay());
+  const manualPay = useLiveMutation("tenant", (v: { amount: number; message: string }) =>
+    api.tenant.submitManualRentPayment(v.amount, v.message));
   const [copied, setCopied] = useState<string>();
+  const [transferMessage, setTransferMessage] = useState("");
   const h = home.data;
 
   useEffect(() => {
@@ -51,41 +54,117 @@ export default function Pay() {
 
   return (
     <div className="grid gap-4">
-      <Panel tone="hero" className="p-6 sm:p-8">
-        <h1 className="text-3xl sm:text-4xl">{greeting()}, <em className="font-display not-italic text-ember-400">{session?.name?.split(" ")[0]}</em></h1>
-        <p className="mt-2 text-graphite-200">{t.houseTitle}, unit {t.unit}. Rent {formatKes(t.rent)} is due on the {t.dueDay}th.</p>
+      <Panel tone="hero" className="p-5 sm:p-7">
+        <p className="text-sm font-semibold text-ember-600">Tenant dashboard</p>
+        <h2 className="mt-2 text-3xl sm:text-4xl">{greeting()}, <em className="font-display not-italic text-ember-500">{session?.name?.split(" ")[0]}</em></h2>
+        <p className="mt-2 text-graphite-300">{t.houseTitle}, unit {t.unit}. Rent {formatKes(t.rent)} is due on the {t.dueDay}th.</p>
       </Panel>
       <ErrorNote error={home.error} />
-      <Stats items={[
-        { label: "Balance", value: formatKes(h.balance), tone: h.balance > 0 ? "warn" : "ok", note: h.balance > 0 ? "due now" : "paid up" },
-        { label: "Next due", value: `${t.dueDay}th`, note: "every month" }, { label: "Paid so far", value: formatKes(h.paid) }, { label: "Payments", value: String(h.history.length) },
-      ]} />
+      <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+        {[
+          { label: "Balance", value: formatKes(h.balance), note: h.balance > 0 ? "due now" : "paid up", icon: CircleDollarSign, color: "bg-orange-100 text-orange-700" },
+          { label: "Next due", value: `${t.dueDay}th`, note: "every month", icon: CalendarDays, color: "bg-violet-100 text-violet-700" },
+          { label: "Paid so far", value: formatKes(h.paid), note: "confirmed rent payments", icon: CircleDollarSign, color: "bg-emerald-100 text-emerald-700" },
+          { label: "Payments", value: String(h.history.length), note: "in your payment history", icon: ReceiptText, color: "bg-amber-100 text-amber-700" },
+        ].map(({ label, value, note, icon: Icon, color }) => (
+          <Panel key={label} className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm text-graphite-300">{label}</p>
+              <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${color}`}><Icon className="size-5" aria-hidden /></span>
+            </div>
+            <p className="mt-3 text-2xl font-extrabold text-slate-900 sm:text-3xl">{value}</p>
+            <p className="mt-1 text-xs text-graphite-400">{note}</p>
+          </Panel>
+        ))}
+      </div>
 
-      <Panel className="grid gap-4 p-5 sm:p-6">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.75fr)]">
+      <Panel className="grid content-start gap-4 p-5 sm:p-6">
         {celebrate ? <PayCelebration message="Payment received. Thank you!" /> : h.balance > 0 ? (
           <>
             <h2 className="text-2xl">Pay rent</h2>
-            <p className="text-graphite-300">
+            {h.paymentMode === "unavailable" ? <p role="status" className="text-graphite-300">Your landlord has not yet enabled a verified direct payment method. NyumbaPlug does not collect or hold rent. Please contact your landlord for their payment instructions.</p> : <p className="text-graphite-300">
               You pay the full balance of <span className="text-bone">{formatKes(h.balance)}</span>.
               {h.paymentMode === "bank_paybill"
-                ? " An M-Pesa prompt will be sent to your phone for your landlord's bank Paybill. Rent is recorded after Safaricom confirms the payment."
+                ? " Transfer this exact amount directly to your landlord's bank account. Your landlord must confirm receipt before it is added to your rent record."
                 : " You will get an M-Pesa prompt on your phone: enter your PIN to finish."}
-            </p>
+            </p>}
             <ErrorNote error={pay.error} />
-            {waiting && <p role="status" className="text-ember-300">{h.paymentMode === "bank_paybill"
-              ? "Check your phone and enter your M-Pesa PIN. Waiting for Safaricom to confirm the bank payment; this page updates automatically."
-              : "Check your phone and enter your M-Pesa PIN. This page updates by itself."}</p>}
+            <ErrorNote error={manualPay.error} />
+            {waiting && <p role="status" className="text-ember-300">Check your phone and enter your M-Pesa PIN. This page updates by itself.</p>}
             {!waiting && (h.lastAttempt?.status === "failed" || h.lastAttempt?.status === "timeout") && <p className="text-sm text-graphite-300">{h.lastAttempt.status === "timeout" ? "We could not confirm your last payment. Check your M-Pesa messages before trying again." : "Your last payment did not go through. You were not charged. Try again."}</p>}
-            <div>
-              <Button magnetic size="md" loading={pay.isPending} disabled={waiting} onClick={() => { before.current = { balance: h.balance, attemptId: h.lastAttempt?.id ?? null }; setCelebrate(false); pay.mutate(undefined, { onSuccess: () => setWaiting(true) }); }}>
-                {waiting ? h.paymentMode === "bank_paybill" ? "Waiting for bank payment..." : "Waiting for M-Pesa..." : h.paymentMode === "bank_paybill" ? `Pay ${formatKes(h.balance)} by bank` : `Pay ${formatKes(h.balance)} with M-Pesa`}
-              </Button>
-            </div>
+            {h.paymentMode === "own" && <Button magnetic size="md" loading={pay.isPending} disabled={waiting} onClick={() => { before.current = { balance: h.balance, attemptId: h.lastAttempt?.id ?? null }; setCelebrate(false); pay.mutate(undefined, { onSuccess: () => setWaiting(true) }); }}>
+              {waiting ? "Waiting for M-Pesa..." : `Pay ${formatKes(h.balance)} with M-Pesa`}
+            </Button>}
+            {h.paymentMode === "bank_paybill" && h.manualBank && (
+              <div className="grid gap-4">
+                {([
+                  ["Bank", h.manualBank.bankName, "manual-bank"],
+                  ["Account holder", h.manualBank.accountName, "manual-holder"],
+                  ["Account number", h.manualBank.accountNumber, "manual-account"],
+                ] as const).map(([label, value, key]) => (
+                  <div key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/4 px-4 py-3">
+                    <div><p className="text-sm text-graphite-300">{label}</p><p className="font-display text-lg tracking-wide">{value}</p></div>
+                    <Button variant="glass" size="sm" onClick={() => copy(key, value)}>{copied === key ? "Copied" : "Copy"}</Button>
+                  </div>
+                ))}
+                {h.manualClaims.some((claim) => claim.status === "pending") ? (
+                  <p role="status" className="rounded-lg border border-ember-500/30 bg-ember-500/8 p-3 text-sm text-graphite-200">
+                    Your transfer claim is awaiting landlord review. It is not counted toward rent until your landlord confirms the money arrived.
+                  </p>
+                ) : (
+                  <>
+                    <label className="grid gap-1.5 text-sm text-graphite-200">
+                      Paste the bank transfer confirmation message
+                      <textarea rows={4} maxLength={2000} value={transferMessage} onChange={(e) => setTransferMessage(e.target.value)}
+                        placeholder="Paste the full transfer confirmation message here."
+                        className="w-full rounded-[10px] border border-white/10 bg-graphite-900/60 px-3.5 py-2.5 text-bone placeholder:text-graphite-400 focus:border-ember-400/70 focus:outline-none" />
+                      <span className="text-xs text-graphite-400">This message is only your claim; it is not automatic proof of payment.</span>
+                    </label>
+                    <Button loading={manualPay.isPending} disabled={transferMessage.trim().length < 10}
+                      onClick={() => manualPay.mutate({ amount: h.balance, message: transferMessage.trim() }, { onSuccess: () => setTransferMessage("") })}>
+                      Submit transfer for landlord review
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <><h2 className="text-2xl">You are paid up</h2><p className="text-graphite-300">Nothing to pay right now. Your next rent of {formatKes(t.rent)} is due on the {t.dueDay}th.</p></>
         )}
       </Panel>
+      <Panel className="grid content-start gap-4 p-5 sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-orange-100 text-orange-700"><House className="size-5" aria-hidden /></span>
+          <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Your home</p><h2 className="text-lg font-bold text-bone">{t.houseTitle}</h2></div>
+        </div>
+        <dl className="grid gap-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3"><dt className="text-sm text-graphite-400">Unit</dt><dd className="text-sm font-semibold text-slate-800">{t.unit}</dd></div>
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3"><dt className="text-sm text-graphite-400">Monthly rent</dt><dd className="text-sm font-semibold text-slate-800">{formatKes(t.rent)}</dd></div>
+          <div className="flex items-center justify-between gap-3"><dt className="text-sm text-graphite-400">Rent due</dt><dd className="text-sm font-semibold text-slate-800">Every {t.dueDay}th</dd></div>
+        </dl>
+        <div className={`rounded-xl p-3 text-sm ${h.balance > 0 ? "bg-orange-50 text-orange-800" : "bg-emerald-50 text-emerald-800"}`}>
+          {h.balance > 0 ? `${formatKes(h.balance)} rent balance is due.` : "Your rent is fully paid."}
+        </div>
+      </Panel>
+      </div>
+
+      {h.manualClaims.length > 0 && (
+        <Panel className="p-5 sm:p-6">
+          <h2 className="text-xl">Manual transfer claims</h2>
+          <ul className="mt-3 divide-y divide-white/8">
+            {h.manualClaims.map((claim) => (
+              <li key={claim.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <span>{formatKes(claim.amount)} · {fmtDate(claim.submittedAt)}</span>
+                <Chip tone={claim.status === "received" ? "ok" : claim.status === "rejected" ? "danger" : "neutral"}>
+                  {claim.status === "received" ? "Landlord confirmed received" : claim.status === "rejected" ? "Rejected — contact your landlord" : "Awaiting landlord review"}
+                </Chip>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       {t.electricityEnabled && t.kplcPaybill && t.meterNumber && (
         <Panel className="grid gap-3 p-5 sm:p-6">

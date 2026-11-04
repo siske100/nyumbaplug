@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Ambient } from "@/components/layout/Ambient";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { HouseLoader } from "@/components/motion/Doodles";
@@ -20,13 +20,13 @@ const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
 const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
   Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")),
-  Payments: lazy(() => import("@/pages/landlord/Payments")), Mpesa: lazy(() => import("@/pages/landlord/MpesaSetup")), Sms: lazy(() => import("@/pages/landlord/Sms")),
+  Finances: lazy(() => import("@/pages/landlord/Finances")), Sms: lazy(() => import("@/pages/landlord/Sms")),
   Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")),
 };
 const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy(() => import("@/pages/tenant/Pay")), Documents: lazy(() => import("@/pages/tenant/Documents")) };
 const A = {
   Layout: lazy(() => import("@/pages/admin/AdminLayout")), Overview: lazy(() => import("@/pages/admin/Overview")), Documents: lazy(() => import("@/pages/admin/Documents")),
-  Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
+  Bookings: lazy(() => import("@/pages/admin/Bookings")), Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
   Payouts: lazy(() => import("@/pages/admin/Payouts")), Celcom: lazy(() => import("@/pages/admin/Celcom")),
 };
 
@@ -40,6 +40,7 @@ export default function App() {
           <Route index element={<Browse />} />
           <Route path="about" element={<About />} />
           <Route path="house/:id" element={<House />} />
+          <Route path="marketplace/*" element={<Navigate to="/" replace />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
         </Route>
@@ -52,8 +53,9 @@ export default function App() {
           <Route path="houses" element={<L.Houses />} />
           <Route path="visits" element={<L.Visits />} />
           <Route path="tenants" element={<L.Tenants />} />
-          <Route path="payments" element={<L.Payments />} />
-          <Route path="mpesa" element={<L.Mpesa />} />
+          <Route path="finances" element={<L.Finances />} />
+          <Route path="payments" element={<Navigate to="/landlord/finances#ledger" replace />} />
+          <Route path="mpesa" element={<Navigate to="/landlord/finances#payment-setup" replace />} />
           <Route path="sms" element={<L.Sms />} />
           <Route path="plan" element={<L.Plan />} />
           <Route path="complaints" element={<ComplaintsView role="landlord" />} />
@@ -66,9 +68,12 @@ export default function App() {
           <Route path="documents" element={<T.Documents />} />
           <Route path="notices" element={<NoticesView role="tenant" />} />
         </Route>
+        <Route path="/marketer/*" element={<Navigate to="/" replace />} />
+        <Route path="/client/*" element={<Navigate to="/" replace />} />
 
         <Route path="/admin" element={<RequireRole role="admin"><A.Layout /></RequireRole>}>
           <Route index element={<A.Overview />} />
+          <Route path="bookings" element={<A.Bookings />} />
           <Route path="documents" element={<A.Documents />} />
           <Route path="subscriptions" element={<A.Subscriptions />} />
           <Route path="payments" element={<A.Payments />} />

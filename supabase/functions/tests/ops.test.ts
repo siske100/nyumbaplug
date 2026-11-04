@@ -7,7 +7,10 @@ import { HttpError, type Rpc } from "../_shared/ops.ts";
 import { bankTestPay, c2bConfirm, c2bValidate, connectDaraja, handleStkCallback, platformPay, reconcilePending, tenantPay, type ConnectDeps } from "../_shared/payments.ts";
 
 const eq = (a: unknown, b: unknown) => nodeAssert.deepStrictEqual(a, b);
-const ok = (c: unknown, m?: string) => nodeAssert.ok(c, m);
+const ok = (c: unknown, m?: string) => {
+  if (m === undefined) nodeAssert.ok(c);
+  else nodeAssert.ok(c, m);
+};
 async function rejectsWith(fn: () => Promise<unknown>, status: number, text?: RegExp) {
   try { await fn(); } catch (e) { ok(e instanceof HttpError, String(e)); eq((e as HttpError).status, status); if (text) ok(text.test((e as HttpError).message), (e as HttpError).message); return; }
   throw new Error("expected the call to fail");
@@ -45,17 +48,14 @@ const cb = (over: Record<string, unknown> = {}) => ({ Body: { stkCallback: { Mer
   { Name: "Amount", Value: 6500 }, { Name: "MpesaReceiptNumber", Value: "NLJ7RT61SV" }, { Name: "PhoneNumber", Value: 254712345678 }] }, ...over } } });
 
 // ---------------- tenants paying ----------------
-Deno.test("tenant pays: the full balance, the prompt goes to the verified phone, with the platform's Paybill by default", async () => {
+Deno.test("tenant rent: platform Paybill is never used as a fallback", async () => {
+  const restore = quiet();
   const f = fake({ current_balance: () => ({ data: 6500 }), start_payment_attempt: () => ({ data: "att-1" }), get_payment_credentials: platformAccount });
   const { d, pushes } = mkDaraja();
-  const out = await tenantPay(payDeps(f, d), { tenancyId: "t1", landlordId: "l1", tenancyCode: "ABCD1234", phone: "0712345678" });
-  eq(out.amount, 6500);
-  eq(pushes[0]!.creds, PLATFORM);
-  eq(pushes[0]!.req.msisdn, "254712345678"); eq(pushes[0]!.req.amount, 6500); eq(pushes[0]!.req.accountRef, "ABCD1234");
-  eq(pushes[0]!.req.callbackUrl, "https://x.supabase.co/functions/v1/daraja-stk-callback/PLATFORMTOKEN");
-  eq(f.names(), ["current_balance", "start_payment_attempt", "get_payment_credentials", "bind_payment_attempt"]);
-  ok(String(f.last("start_payment_attempt")!.p_checkout).startsWith("pending-"));
-  eq(f.last("bind_payment_attempt"), { p_attempt: "att-1", p_checkout: "ws_CO_1", p_merchant: "mr1" });
+  await rejectsWith(() => tenantPay(payDeps(f, d), { tenancyId: "t1", landlordId: "l1", tenancyCode: "ABCD1234", phone: "0712345678" }), 503, /direct rent payment method/);
+  restore();
+  eq(pushes.length, 0);
+  ok(f.names().includes("fail_attempt_by_id"));
 });
 
 Deno.test("tenant pays: a landlord with a connected own Paybill gets the rent in it", async () => {
@@ -66,23 +66,13 @@ Deno.test("tenant pays: a landlord with a connected own Paybill gets the rent in
   eq(pushes[0]!.req.callbackUrl, "https://x.supabase.co/functions/v1/daraja-stk-callback/LLTOKEN");
 });
 
-Deno.test("tenant pays: bank Paybill uses the configured receiving shortcode and full account reference", async () => {
-  const accountNumber = "1234567890123456789012345678901234567890";
-  const f = fake({
-    current_balance: () => ({ data: 6500 }),
-    tenant_bank_paybill: () => ({ data: [{ paybill: "523456", account_number: accountNumber }] }),
-    start_payment_attempt: () => ({ data: "bank-attempt" }),
-    bind_bank_paybill_attempt: () => ({}),
-    get_payment_credentials: platformAccount,
-  });
+Deno.test("tenant rent: bank Paybill route is disabled until direct-settlement credentials are supported", async () => {
+  const f = fake({ current_balance: () => ({ data: 6500 }) });
   const { d, pushes } = mkDaraja();
-  await tenantPay(payDeps(f, d), {
+  await rejectsWith(() => tenantPay(payDeps(f, d), {
     tenancyId: "t", landlordId: "l1", tenancyCode: "TENANT01", phone: "0712345678", paymentMode: "bank_paybill",
-  });
-  eq(pushes[0]!.creds, { ...PLATFORM, shortcode: "523456" });
-  eq(pushes[0]!.req.amount, 6500);
-  eq(pushes[0]!.req.accountRef, accountNumber);
-  eq(f.last("bind_bank_paybill_attempt"), { p_attempt: "bank-attempt", p_paybill: "523456" });
+  }), 409, /not enabled for direct landlord settlement/);
+  eq(pushes.length, 0);
 });
 
 Deno.test("tenant pays: a broken own connection stops the payment instead of sending rent to the wrong place", async () => {
@@ -102,7 +92,7 @@ Deno.test("tenant pays: nothing owed, or a prompt that cannot be sent, are handl
   await rejectsWith(() => tenantPay(payDeps(none, mkDaraja().d), { tenancyId: "t", landlordId: "l", tenancyCode: "Z", phone: "0712345678" }), 400, /Nothing to pay/);
   eq(none.names(), ["current_balance"]);
   const restore = quiet();
-  const f = fake({ current_balance: () => ({ data: 6500 }), start_payment_attempt: () => ({ data: "att" }), get_payment_credentials: platformAccount });
+  const f = fake({ current_balance: () => ({ data: 6500 }), start_payment_attempt: () => ({ data: "att" }), get_payment_credentials: ownAccount() });
   const down = mkDaraja({ stkPush: async () => { throw new Error("Safaricom down"); } }).d;
   await rejectsWith(() => tenantPay(payDeps(f, down), { tenancyId: "t", landlordId: "l", tenancyCode: "Z", phone: "0712345678" }), 502);
   restore();
@@ -194,9 +184,26 @@ Deno.test("landlord purchase: whole shillings only, rules come from the database
   await rejectsWith(() => platformPay(payDeps(refuse, d), { landlordId: "l", purpose: "subscription", amount: 900, phone: "0712345678" }), 400, /KES 1125/);
 });
 
+Deno.test("marketplace payments use the platform Paybill and keep a viewing reference on the attempt", async () => {
+  const f = fake({ start_platform_attempt: () => ({ data: "marketplace-attempt" }) });
+  const { d, pushes } = mkDaraja();
+  await platformPay(payDeps(f, d), { landlordId: "marketer", purpose: "marketer_activation", amount: 699, phone: "0712345678" });
+  eq(pushes[0]!.creds, PLATFORM);
+  eq(pushes[0]!.req.accountRef, "MARKETER");
+  eq(pushes[0]!.req.description, "Marketer activation");
+  eq(f.last("start_platform_attempt")?.p_reference, null);
+
+  const booking = "92d4e1b5-b3d4-4a46-8912-c53c06b44d03";
+  await platformPay(payDeps(f, d), { landlordId: "client", purpose: "viewing_fee", amount: 450, phone: "0723456789", referenceId: booking });
+  eq(pushes[1]!.creds, PLATFORM);
+  eq(pushes[1]!.req.accountRef, "VIEW-92D4E1B5B3D4");
+  eq(pushes[1]!.req.description, "House viewing fee");
+  eq(f.last("start_platform_attempt")?.p_reference, booking);
+});
+
 // ---------------- Safaricom's answers ----------------
 Deno.test("callback: a wrong secret address is refused and nothing is credited", async () => {
-  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: platformAccount });
+  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: ownAccount() });
   const { d, queried } = mkDaraja();
   await rejectsWith(() => handleStkCallback(payDeps(f, d), "WRONG", cb()), 403);
   eq(queried.length, 0); ok(!f.names().includes("confirm_payment"));
@@ -204,15 +211,15 @@ Deno.test("callback: a wrong secret address is refused and nothing is credited",
 
 Deno.test("callback: a successful payment is checked with Safaricom, credited once, and the tenant is told", async () => {
   const notified: string[] = [];
-  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: platformAccount, confirm_payment: () => ({ data: "ledger-9" }) });
+  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: ownAccount(), confirm_payment: () => ({ data: "ledger-9" }) });
   const { d, queried } = mkDaraja();
-  await handleStkCallback(payDeps(f, d, notified), "PLATFORMTOKEN", cb());
+  await handleStkCallback(payDeps(f, d, notified), "LLTOKEN", cb());
   eq(queried, ["ws_CO_1"]);
   eq(f.last("confirm_payment"), { p_checkout: "ws_CO_1", p_receipt: "NLJ7RT61SV", p_amount: 6500, p_msisdn: "254712345678" });
   eq(notified, ["ledger-9"]);
 });
 
-Deno.test("callback: bank Paybill verifies against the shortcode saved on the payment attempt", async () => {
+Deno.test("callback: legacy bank Paybill rent attempts are ignored after direct-only cutover", async () => {
   const f = fake({
     attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending", bank_paybill_shortcode: "523456" } }),
     confirm_payment: () => ({ data: "bank-ledger" }),
@@ -220,33 +227,33 @@ Deno.test("callback: bank Paybill verifies against the shortcode saved on the pa
   const notified: string[] = [];
   const { d, queryCreds } = mkDaraja();
   await handleStkCallback(payDeps(f, d, notified), "PLATFORMTOKEN", cb());
-  eq(queryCreds, [{ ...PLATFORM, shortcode: "523456" }]);
-  eq(f.last("confirm_payment"), { p_checkout: "ws_CO_1", p_receipt: "NLJ7RT61SV", p_amount: 6500, p_msisdn: "254712345678" });
-  eq(notified, ["bank-ledger"]);
+  eq(queryCreds, []);
+  ok(!f.names().includes("confirm_payment"));
+  eq(notified, []);
 });
 
 Deno.test("callback: a forged success that Safaricom does not confirm credits nothing", async () => {
   const restore = quiet();
-  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: platformAccount });
+  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: ownAccount() });
   const { d } = mkDaraja({ stkQuery: async () => ({ resultCode: 1032, resultDesc: "cancelled" }) });
-  await handleStkCallback(payDeps(f, d), "PLATFORMTOKEN", cb());
+  await handleStkCallback(payDeps(f, d), "LLTOKEN", cb());
   restore();
   ok(!f.names().includes("confirm_payment"));
 });
 
 Deno.test("callback: cancelled prompts, unknown requests, repeats and junk", async () => {
-  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: platformAccount });
+  const f = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending" } }), get_payment_credentials: ownAccount() });
   const { d, queried } = mkDaraja();
-  await handleStkCallback(payDeps(f, d), "PLATFORMTOKEN", { Body: { stkCallback: { MerchantRequestID: "m", CheckoutRequestID: "ws_CO_1", ResultCode: 1032, ResultDesc: "Request cancelled by user" } } });
+  await handleStkCallback(payDeps(f, d), "LLTOKEN", { Body: { stkCallback: { MerchantRequestID: "m", CheckoutRequestID: "ws_CO_1", ResultCode: 1032, ResultDesc: "Request cancelled by user" } } });
   eq(f.last("fail_payment_attempt")!.p_code, 1032); eq(queried.length, 0);
   const restore = quiet();
   const unknown = fake({ attempt_lookup: () => ({ data: null }) });
   eq((await handleStkCallback(payDeps(unknown, d), "x", cb())).ResultCode, 0); ok(!unknown.names().includes("confirm_payment"));
   restore();
-  const done = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "succeeded" } }), get_payment_credentials: platformAccount });
-  await handleStkCallback(payDeps(done, d), "PLATFORMTOKEN", cb()); ok(!done.names().includes("confirm_payment"));
+  const done = fake({ attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "succeeded" } }), get_payment_credentials: ownAccount() });
+  await handleStkCallback(payDeps(done, d), "LLTOKEN", cb()); ok(!done.names().includes("confirm_payment"));
   await rejectsWith(() => handleStkCallback(payDeps(f, d), "PLATFORMTOKEN", { nonsense: true }), 400);
-  await rejectsWith(() => handleStkCallback(payDeps(f, d), "PLATFORMTOKEN", cb({ CallbackMetadata: { Item: [] } })), 400);
+  await rejectsWith(() => handleStkCallback(payDeps(f, d), "LLTOKEN", cb({ CallbackMetadata: { Item: [] } })), 400);
 });
 
 Deno.test("callback: landlord purchases are confirmed against the platform Paybill", async () => {
@@ -262,28 +269,28 @@ Deno.test("manual Paybill: wrong secret refused, wrong amounts and accounts reje
   const f = fake({ account_by_token: (a) => ({ data: a.p_token === "LLTOKEN" ? { landlord_id: "l1" } : null }), validate_c2b: () => ({ data: "ok" }) });
   const dep = payDeps(f, mkDaraja().d);
   await rejectsWith(() => c2bValidate(dep, "BAD", body), 403);
-  eq((await c2bValidate(dep, "PLATFORMTOKEN", body)).ResultCode, 0);
-  eq(f.last("validate_c2b")!.p_landlord, null);
+  await rejectsWith(() => c2bValidate(dep, "PLATFORMTOKEN", body), 403, /not a rent collection route/);
   await c2bValidate(dep, "LLTOKEN", body);
   eq(f.last("validate_c2b")!.p_landlord, "l1");
   for (const [answer, code] of [["unknown_account", "C2B00012"], ["amount_mismatch", "C2B00013"], ["nothing_due", "C2B00013"]]) {
-    const g = fake({ validate_c2b: () => ({ data: answer }) });
-    eq((await c2bValidate(payDeps(g, mkDaraja().d), "PLATFORMTOKEN", body)).ResultCode, code);
+    const g = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), validate_c2b: () => ({ data: answer }) });
+    eq((await c2bValidate(payDeps(g, mkDaraja().d), "LLTOKEN", body)).ResultCode, code);
   }
-  eq((await c2bValidate(dep, "PLATFORMTOKEN", { junk: 1 })).ResultCode, "C2B00016");
+  await rejectsWith(() => c2bValidate(dep, "PLATFORMTOKEN", { junk: 1 }), 403, /not a rent collection route/);
 });
 
 Deno.test("manual Paybill: the payment is recorded and the tenant told, only when it was credited", async () => {
   const body = { TransID: "RKTQDM7W6S", TransAmount: "6500", BillRefNumber: "ABCD1234", MSISDN: "254712345678" };
   const notified: string[] = [];
-  const f = fake({ record_c2b_payment: () => ({ data: "ledger-1" }) });
-  await c2bConfirm(payDeps(f, mkDaraja().d, notified), "PLATFORMTOKEN", body);
+  const f = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), record_c2b_payment: () => ({ data: "ledger-1" }) });
+  await c2bConfirm(payDeps(f, mkDaraja().d, notified), "LLTOKEN", body);
   eq(notified, ["ledger-1"]); eq(f.last("record_c2b_payment")!.p_msisdn, "0712345678");
-  const held = fake({ record_c2b_payment: () => ({ data: null }) });
+  const held = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), record_c2b_payment: () => ({ data: null }) });
   const n2: string[] = [];
-  await c2bConfirm(payDeps(held, mkDaraja().d, n2), "PLATFORMTOKEN", body);
+  await c2bConfirm(payDeps(held, mkDaraja().d, n2), "LLTOKEN", body);
   eq(n2, []);
-  await rejectsWith(() => c2bConfirm(payDeps(f, mkDaraja().d), "PLATFORMTOKEN", { junk: 1 }), 400);
+  await rejectsWith(() => c2bConfirm(payDeps(f, mkDaraja().d), "LLTOKEN", { junk: 1 }), 400);
+  await rejectsWith(() => c2bConfirm(payDeps(f, mkDaraja().d), "PLATFORMTOKEN", body), 403, /not a rent collection route/);
 });
 
 // ---------------- connecting a Paybill ----------------
@@ -323,7 +330,7 @@ Deno.test("reconcile: silent prompts are settled from Safaricom's answer, and on
     { kind: "tenant", id: "1", landlord_id: "l1", checkout: "c-paid", amount: 6500 }, { kind: "tenant", id: "2", landlord_id: "l1", checkout: "c-cancel", amount: 6500 },
     { kind: "platform", id: "3", landlord_id: "l1", checkout: "c-wait", amount: 1000 }, { kind: "platform", id: "4", landlord_id: "l1", checkout: "c-boom", amount: 1000 },
   ];
-  const f = fake({ expire_old_attempts: () => ({ data: 2 }), pending_stk_attempts: () => ({ data: rows }), get_payment_credentials: platformAccount, confirm_payment: () => ({ data: "led-1" }) });
+  const f = fake({ expire_old_attempts: () => ({ data: 2 }), pending_stk_attempts: () => ({ data: rows }), get_payment_credentials: ownAccount(), confirm_payment: () => ({ data: "led-1" }) });
   const notified: string[] = [];
   const { d } = mkDaraja({ stkQuery: async (_c, id) => { if (id === "c-boom") throw new Error("down"); return id === "c-paid" ? { resultCode: 0, resultDesc: "" } : id === "c-cancel" ? { resultCode: 1032, resultDesc: "cancelled" } : { resultCode: -1, resultDesc: "" }; } });
   const out = await reconcilePending(payDeps(f, d, notified));
@@ -333,7 +340,7 @@ Deno.test("reconcile: silent prompts are settled from Safaricom's answer, and on
   eq(f.last("fail_payment_attempt")!.p_code, 1032);
 });
 
-Deno.test("reconcile: bank Paybill retries use the saved receiving shortcode", async () => {
+Deno.test("reconcile: legacy bank rent attempts are failed, never queried or credited", async () => {
   const rows = [{ kind: "tenant", id: "1", landlord_id: "l1", checkout: "bank-open", amount: 6500, bank_paybill_shortcode: "523456" }];
   const f = fake({
     expire_old_attempts: () => ({ data: 0 }),
@@ -342,9 +349,10 @@ Deno.test("reconcile: bank Paybill retries use the saved receiving shortcode", a
   });
   const notified: string[] = [];
   const { d, queryCreds } = mkDaraja();
-  eq(await reconcilePending(payDeps(f, d, notified)), { confirmed: 1, failed: 0, waiting: 0, errors: 0, timedOut: 0 });
-  eq(queryCreds, [{ ...PLATFORM, shortcode: "523456" }]);
-  eq(notified, ["bank-ledger"]);
+  eq(await reconcilePending(payDeps(f, d, notified)), { confirmed: 0, failed: 1, waiting: 0, errors: 0, timedOut: 0 });
+  eq(queryCreds, []);
+  eq(notified, []);
+  eq(f.last("fail_payment_attempt"), { p_checkout: "bank-open", p_code: 4100, p_desc: "Legacy bank rent route disabled; direct landlord settlement required" });
 });
 
 // ---------------- SMS ----------------

@@ -217,14 +217,15 @@ describe("payment credentials and manual payouts", () => {
     assert.equal((await call(db, server, "select account_by_token('guess') a")).a, null);
     await rejects(as(db, user(w.la), "select * from get_payment_credentials($1)", [w.la]), /permission denied/);
   });
-  it("if the connection breaks, rent falls back to the platform Paybill", async () => {
+  it("if the connection breaks, the mode is not switched to the platform and tenant rent is disabled", async () => {
     await as(db, user(w.la), "select set_payment_mode('own')");
     await as(db, server, "select save_payment_credentials($1,'123456','paybill',null,null,'failed','Safaricom rejected the keys')", [w.la]);
-    assert.deepEqual(await call(db, user(w.la), "select mode, status, failure_reason from payment_accounts"), { mode: "platform", status: "failed", failure_reason: "Safaricom rejected the keys" });
+    assert.deepEqual(await call(db, user(w.la), "select mode, status, failure_reason from payment_accounts"), { mode: "own", status: "failed", failure_reason: "Safaricom rejected the keys" });
+    assert.equal((await as(db, user(w.ta), "select tenant_payment_route() route"))[0].route, null);
   });
   it("the admin sees payouts and records the M-Pesa reference once", async () => {
-    await sql(db, "insert into payout_destinations(landlord_id,kind,destination,verified) values ($1,'mpesa_phone','0712345678',true)", [w.la]);
-    await sql(db, "insert into ledger_entries(tenancy_id,landlord_id,kind,bucket,amount,method,provider_ref) values ($1,$2,'rent_payment','rent',6500,'c2b','PAYOUT001')", [w.tA, w.la]);
+    await sql(db, "insert into payout_destinations(landlord_id,kind,destination,verified) values ($1,'mpesa_phone','0712345678',true)", [w.lb]);
+    await sql(db, "insert into ledger_entries(tenancy_id,landlord_id,kind,bucket,amount,method,provider_ref) values ($1,$2,'rent_payment','rent',6500,'c2b','PAYOUT001')", [w.tB, w.lb]);
     assert.equal((await call(db, server, "select create_due_payouts() n")).n, 1);
     assert.equal((await call(db, server, "select create_due_payouts() n")).n, 0);
     const p = (await as(db, user(w.admin), "select * from admin_payouts"))[0];
@@ -234,7 +235,7 @@ describe("payment credentials and manual payouts", () => {
     await rejects(as(db, user(w.admin), "select admin_mark_payout_paid($1,'SHORT')", [p.id]), /full M-Pesa reference/);
     await as(db, user(w.admin), "select admin_mark_payout_paid($1,'mpesaref01')", [p.id]);
     await rejects(as(db, user(w.admin), "select admin_mark_payout_paid($1,'MPESAREF02')", [p.id]), /already paid/);
-    assert.deepEqual(await call(db, user(w.la), "select status, provider_ref from payouts"), { status: "paid", provider_ref: "MPESAREF01" });
+    assert.deepEqual(await call(db, user(w.lb), "select status, provider_ref from payouts"), { status: "paid", provider_ref: "MPESAREF01" });
   });
 });
 
@@ -298,11 +299,13 @@ describe("payment plumbing", () => {
   });
   it("one attempt can never be credited twice, even with a different receipt number", async () => {
     const t = await tenancy();
+    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill', status='connected', credentials_ciphertext='\\x01'::bytea where landlord_id=$1", [w.la]);
     const a = (await as(db, server, "select start_payment_attempt($1,'0712345678','ws_CO_TWICE','mr') id", [t.id]))[0].id;
     const first = (await as(db, server, "select confirm_payment('ws_CO_TWICE','REALRECEIPT1',6500,'0712345678') id"))[0].id;
     const again = (await as(db, server, "select confirm_payment('ws_CO_TWICE','STKQ-ws_CO_TWICE',6500,'0712345678') id"))[0].id;
     assert.equal(again, first);
     assert.equal((await one(db, "select count(*)::int n from ledger_entries where attempt_id=$1", [a])).n, 1);
+    await sql(db, "update payment_accounts set mode='platform', shortcode=null, shortcode_kind=null, status='not_connected', credentials_ciphertext=null where landlord_id=$1", [w.la]);
   });
   it("a failed prompt can be failed by its id, and silent attempts show up for a status check", async () => {
     const t = await tenancy();
@@ -321,26 +324,28 @@ describe("payment plumbing", () => {
     const mine = await tenancy(w.la);
     const v = async (code, amt, l) => (await as(db, server, "select validate_c2b($1,$2,$3) r", [code, amt, l]))[0].r;
     const rec = (code, receipt, l) => as(db, server, "select record_c2b_payment($1,6500,$2,'0733000000',$3) id", [code, receipt, l]);
-    assert.equal(await v(mine.tenancy_code, 6500, null), "ok");                          // platform Paybill, landlord uses the platform Paybill
-    assert.equal(await v(mine.tenancy_code, 6500, w.la), "unknown_account");             // not connected to their own yet
-    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill', status='connected' where landlord_id=$1", [w.la]);
+    assert.equal(await v(mine.tenancy_code, 6500, null), "unknown_account");             // platform rent is never accepted
+    assert.equal(await v(mine.tenancy_code, 6500, w.la), "unknown_account");             // not connected yet
+    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill', status='connected', credentials_ciphertext='\x01'::bytea where landlord_id=$1", [w.la]);
     assert.equal(await v(mine.tenancy_code, 6500, w.la), "ok");                          // their own Paybill, their own tenant
     assert.equal(await v(mine.tenancy_code, 6500, w.lb), "unknown_account");             // someone else's Paybill
     assert.equal(await v(mine.tenancy_code, 6500, null), "unknown_account");             // paid to the platform by mistake: refused, the landlord would never receive it
-    assert.equal((await rec(mine.tenancy_code, "OWN0001", w.lb))[0].id, null);           // held for the platform
-    assert.equal((await one(db, "select landlord_id l from held_payments where provider_ref='OWN0001'")).l, null);
+    assert.equal((await rec(mine.tenancy_code, "OWN0001", w.lb))[0].id, null);           // another landlord's token cannot credit this tenant
+    assert.equal((await one(db, "select count(*)::int n from held_payments where provider_ref='OWN0001'")).n, 0);
     assert.equal((await rec(mine.tenancy_code, "OWN0003", null))[0].id, null);
     assert.ok((await rec(mine.tenancy_code, "OWN0002", w.la))[0].id);
     await sql(db, "update payment_accounts set mode='platform' where landlord_id=$1", [w.la]);
   });
   it("the payment-received text has what it needs, and SMS status can be read by the server only", async () => {
     const t = await tenancy();
+    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill', status='connected', credentials_ciphertext='\\x01'::bytea where landlord_id=$1", [w.la]);
     await as(db, server, "select start_payment_attempt($1,'0712345678','ws_CO_NOTICE','m')", [t.id]);
     const id = (await as(db, server, "select confirm_payment('ws_CO_NOTICE','NOTICE001',6500,'0712345678') id"))[0].id;
     const n1 = (await as(db, server, "select ledger_notice($1) n", [id]))[0].n;
     assert.deepEqual({ amount: n1.amount, balance: n1.balance, phone: n1.phone }, { amount: 6500, balance: 0, phone: t.tenancy_code ? n1.phone : "" });
     await rejects(as(db, user(w.la), "select ledger_notice($1)", [id]), /permission denied/);
     await rejects(as(db, user(w.la), "select sms_message_status(gen_random_uuid())"), /permission denied/);
+    await sql(db, "update payment_accounts set mode='platform', shortcode=null, shortcode_kind=null, status='not_connected', credentials_ciphertext=null where landlord_id=$1", [w.la]);
   });
 });
 

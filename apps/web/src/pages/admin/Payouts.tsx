@@ -17,11 +17,11 @@ export default function Payouts() {
 
   return (
     <div className="grid gap-4">
-      <PageHead title="Payouts" sub="Rent collected on the platform Paybill that is owed to landlords. Pay them by M-Pesa, then record the reference." />
+      <PageHead title="Payouts" sub="Historical payouts from the previous rent-collection model. New tenant rent is paid directly to verified landlord accounts and never enters this queue." />
       <ErrorNote error={error ?? mark.error} />
       {isPending && <div className="skeleton h-24" />}
       <Panel className="divide-y divide-white/8">
-        {data?.length === 0 && <p className="p-6 text-graphite-300">No payouts yet. They are created on the schedule you set.</p>}
+        {data?.length === 0 && <p className="p-6 text-graphite-300">No historical payouts.</p>}
         {data?.map((p) => (
           <div key={p.id} className="grid gap-3 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">

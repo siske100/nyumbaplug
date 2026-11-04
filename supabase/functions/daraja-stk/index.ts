@@ -12,7 +12,7 @@ Deno.serve(handle(async (req) => {
   const me = userClient(req);
   const { data: route, error: routeError } = await me.rpc("tenant_payment_route");
   if (routeError) throw fromDb(routeError);
-  if (route !== "platform" && route !== "own" && route !== "bank_paybill") throw new HttpError(409, "This landlord's payment route is unavailable");
+  if (route !== "own") throw new HttpError(409, "Your landlord has not enabled a verified direct rent payment method. Please contact your landlord.");
   const { data: t } = await me.from("tenancies").select("id, landlord_id, tenancy_code").eq("status", "active").limit(1).maybeSingle();
   if (!t) throw new HttpError(404, "We could not find your tenancy");
   const { data: p } = await me.from("profiles").select("phone, phone_verified").single();

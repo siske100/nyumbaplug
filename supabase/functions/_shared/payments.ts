@@ -13,21 +13,20 @@ export interface PayDeps {
 export const ACK = { ResultCode: 0, ResultDesc: "Accepted" };
 export const callbackUrl = (env: PayEnv, fn: string, token: string) => `${env.functionsUrl}/${fn}/${token}`;
 
-/** Which Paybill takes this landlord's rent: their own if it is connected and verified, otherwise the platform's. */
+/** Rent is only routed to the landlord's own verified merchant account. Never fall back to platform funds. */
 export async function resolveCreds(d: PayDeps, landlordId: string): Promise<{ creds: DarajaCreds; token: string; own: boolean }> {
   const r = await d.rpc("get_payment_credentials", { p_landlord: landlordId });
   if (r.error) throw fromDb(r.error);
   const row = (r.data as { mode: string; shortcode: string | null; cipher: string | null; status: string; callback_token: string }[] | null)?.[0];
-  if (row && row.mode === "own") {
-    if (row.status !== "connected" || !row.cipher || !row.shortcode) throw new HttpError(503, "This landlord's payment connection needs attention. Please try again later.");
-    try {
-      const s = await d.decrypt(row.cipher, landlordId);
-      return { creds: { ...s, shortcode: row.shortcode }, token: row.callback_token, own: true };
-    } catch {
-      throw new HttpError(503, "This landlord's payment connection needs attention. Please try again later.");
-    }
+  if (!row || row.mode !== "own" || row.status !== "connected" || !row.cipher || !row.shortcode) {
+    throw new HttpError(503, "Your landlord has not configured an active direct rent payment method. Contact your landlord before paying.");
   }
-  return { creds: d.env.platform, token: d.env.platformToken, own: false };
+  try {
+    const s = await d.decrypt(row.cipher, landlordId);
+    return { creds: { ...s, shortcode: row.shortcode }, token: row.callback_token, own: true };
+  } catch {
+    throw new HttpError(503, "This landlord's direct payment connection needs attention. Please try again later.");
+  }
 }
 
 async function sendPrompt(d: PayDeps, kind: "tenant" | "platform", attemptId: string, creds: DarajaCreds, token: string,
@@ -54,16 +53,8 @@ export async function tenantPay(d: PayDeps, i: {
   if (bal.error) throw fromDb(bal.error);
   if (typeof bal.data !== "number" || bal.data <= 0) throw new HttpError(400, "Nothing to pay");
 
-  let bankDestination: { paybill: string; account_number: string } | undefined;
-  if (i.paymentMode === "bank_paybill") {
-    const destination = await d.rpc("tenant_bank_paybill", { p_tenancy: i.tenancyId });
-    if (destination.error) throw fromDb(destination.error);
-    const row = (Array.isArray(destination.data) ? destination.data[0] : destination.data) as
-      { paybill?: string; account_number?: string } | null;
-    if (!row || !/^\d{5,7}$/.test(row.paybill ?? "") || !/^\d{1,40}$/.test(row.account_number ?? "")) {
-      throw new HttpError(503, "This landlord's bank payment destination needs attention. Please try again later.");
-    }
-    bankDestination = { paybill: row.paybill!, account_number: row.account_number! };
+  if (i.paymentMode && i.paymentMode !== "own") {
+    throw new HttpError(409, "This rent payment method is not enabled for direct landlord settlement.");
   }
 
   const started = await d.rpc("start_payment_attempt", { p_tenancy: i.tenancyId, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(), p_merchant: null });
@@ -71,20 +62,14 @@ export async function tenantPay(d: PayDeps, i: {
   const attemptId = started.data as string;
   let resolved;
   try {
-    if (bankDestination) {
-      const bound = await d.rpc("bind_bank_paybill_attempt", { p_attempt: attemptId, p_paybill: bankDestination.paybill });
-      if (bound.error) throw fromDb(bound.error);
-    }
     resolved = await resolveCreds(d, i.landlordId);
   }
   catch (e) { await d.rpc("fail_attempt_by_id", { p_kind: "tenant", p_attempt: attemptId, p_desc: "payment connection unavailable" }); throw e; }
-  const promptCreds = bankDestination ? { ...resolved.creds, shortcode: bankDestination.paybill } : resolved.creds;
-  const accountRef = bankDestination?.account_number ?? i.tenancyCode;
-  await sendPrompt(d, "tenant", attemptId, promptCreds, resolved.token, { amount: bal.data, phone: i.phone, accountRef, description: "Rent" });
+  await sendPrompt(d, "tenant", attemptId, resolved.creds, resolved.token, { amount: bal.data, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
   return { amount: bal.data, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
-/** A bank test uses the landlord's registered phone and the same platform Daraja STK integration as rent payments. */
+/** Legacy bank-account verification only. This does not enable bank Paybill as a tenant rent route. */
 export async function bankTestPay(d: PayDeps, landlordId: string) {
   const started = await d.rpc("start_bank_test_payment", { p_landlord: landlordId });
   if (started.error) throw fromDb(started.error);
@@ -120,13 +105,24 @@ export async function bankTestPay(d: PayDeps, landlordId: string) {
   return { amount: 10, message: "Check your verified phone and enter your M-Pesa PIN." };
 }
 
-/** A landlord pays their subscription or buys SMS credit. Always to the platform Paybill. */
-export async function platformPay(d: PayDeps, i: { landlordId: string; purpose: string; amount: number; phone: string }) {
+/** Platform purchases include subscriptions, SMS credit, marketer activation and viewing bookings. */
+export async function platformPay(d: PayDeps, i: { landlordId: string; purpose: string; amount: number; phone: string; referenceId?: string }) {
   if (!Number.isInteger(i.amount)) throw new HttpError(400, "Enter a whole number of shillings");
-  const started = await d.rpc("start_platform_attempt", { p_landlord: i.landlordId, p_purpose: i.purpose, p_amount: i.amount, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(), p_merchant: null });
+  const started = await d.rpc("start_platform_attempt", {
+    p_landlord: i.landlordId, p_purpose: i.purpose, p_amount: i.amount, p_msisdn: i.phone,
+    p_checkout: "pending-" + crypto.randomUUID(), p_merchant: null, p_reference: i.referenceId ?? null,
+  });
   if (started.error) throw fromDb(started.error);
+  const accountRef = i.purpose === "subscription" ? "SUBSCRIPTION"
+    : i.purpose === "sms_recharge" ? "SMSCREDIT"
+      : i.purpose === "marketer_activation" ? "MARKETER"
+        : i.referenceId ? `VIEW-${i.referenceId.replaceAll("-", "").slice(0, 12).toUpperCase()}` : "VIEWING";
+  const description = i.purpose === "subscription" ? "Subscription"
+    : i.purpose === "sms_recharge" ? "SMS credit"
+      : i.purpose === "marketer_activation" ? "Marketer activation"
+        : "House viewing fee";
   await sendPrompt(d, "platform", started.data as string, d.env.platform, d.env.platformToken,
-    { amount: i.amount, phone: i.phone, accountRef: i.purpose === "subscription" ? "SUBSCRIPTION" : "SMSCREDIT", description: i.purpose === "subscription" ? "Subscription" : "SMS credit" });
+    { amount: i.amount, phone: i.phone, accountRef, description });
   return { amount: i.amount, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
@@ -187,14 +183,14 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
   const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string; bank_paybill_shortcode?: string | null } | null;
   if (!look) { console.error("callback for an unknown request", cb.checkoutRequestId); return ACK; }
 
+  if (look.status === "succeeded" || look.status === "failed" || look.status === "timeout") return ACK;
   const bankShortcode = look.kind === "tenant" ? look.bank_paybill_shortcode : null;
+  // Legacy bank-Paybill rent attempts are deliberately non-settleable after direct-only cutover.
+  if (bankShortcode) return ACK;
   const resolved = look.kind === "platform"
     ? { creds: d.env.platform, token: d.env.platformToken }
-    : bankShortcode
-      ? { creds: bankPaybillCreds(d, bankShortcode), token: d.env.platformToken }
-      : await resolveCreds(d, look.landlord_id);
+    : await resolveCreds(d, look.landlord_id);
   if (!safeEqual(token, resolved.token)) throw new HttpError(403, "Not allowed");
-  if (look.status === "succeeded") return ACK;
 
   if (cb.resultCode !== 0) {
     await d.rpc(look.kind === "tenant" ? "fail_payment_attempt" : "fail_platform_attempt", { p_checkout: cb.checkoutRequestId, p_code: cb.resultCode, p_desc: cb.resultDesc.slice(0, 200) });
@@ -217,8 +213,8 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
   return ACK;
 }
 
-async function c2bScope(d: PayDeps, token: string): Promise<{ landlordId: string | null }> {
-  if (safeEqual(token, d.env.platformToken)) return { landlordId: null };
+async function c2bScope(d: PayDeps, token: string): Promise<{ landlordId: string }> {
+  if (safeEqual(token, d.env.platformToken)) throw new HttpError(403, "Platform Paybill is not a rent collection route");
   const r = await d.rpc("account_by_token", { p_token: token });
   const a = r.data as { landlord_id: string } | null;
   if (r.error || !a) throw new HttpError(403, "Not allowed");
@@ -289,6 +285,11 @@ export async function reconcilePending(d: PayDeps) {
     kind: "tenant" | "platform"; landlord_id: string; checkout: string; amount: number; bank_paybill_shortcode?: string | null;
   }[] | null) ?? []) {
     try {
+      if (a.kind === "tenant" && a.bank_paybill_shortcode) {
+        await d.rpc("fail_payment_attempt", { p_checkout: a.checkout, p_code: 4100, p_desc: "Legacy bank rent route disabled; direct landlord settlement required" });
+        out.failed++;
+        continue;
+      }
       const creds = a.kind === "platform" ? d.env.platform
         : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode)
           : (await resolveCreds(d, a.landlord_id)).creds;

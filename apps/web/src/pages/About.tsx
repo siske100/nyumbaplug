@@ -31,7 +31,7 @@ export default function About() {
         </Panel>
         <Panel id="for-landlords" className="grid scroll-mt-24 content-start gap-2 p-5">
           <h2 className="text-xl">For landlords</h2>
-          <p className="text-sm leading-6 text-graphite-300">Create a landlord account, submit details for review, publish available houses, manage tenants and payment records, and choose whether rent goes to the platform Paybill or your own connected Paybill. Google sign-in uses basic Google account information to create or access your landlord account; it does not access Gmail, Drive or contacts.</p>
+          <p className="text-sm leading-6 text-graphite-300">Create a landlord account, submit details for review, publish available houses, manage tenants and payment records, and connect a verified payment account so rent settles directly to you. Google sign-in uses basic Google account information to create or access your landlord account; it does not access Gmail, Drive or contacts.</p>
           <Link to="/sign-up" className="mt-1 text-sm text-ember-300 underline-offset-4 hover:underline">Create a landlord account</Link>
         </Panel>
         <Panel id="for-tenants" className="grid scroll-mt-24 content-start gap-2 p-5">

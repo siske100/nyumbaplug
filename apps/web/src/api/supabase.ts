@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { adminApi } from "./adminSupabase";
 import { callFunction, dbError, toListing } from "./helpers";
 import { landlordApi } from "./landlordSupabase";
+import { marketplaceApi } from "./marketplaceSupabase";
 import { tenantApi, siteApi } from "./tenantSupabase";
 import type { Api, LandlordState, Role, Session } from "./types";
 
@@ -17,7 +18,7 @@ async function adminMfaState(): Promise<"ok" | "enroll" | "challenge"> {
 }
 
 function isRole(role: string): role is Role {
-  return role === "landlord" || role === "tenant" || role === "admin";
+  return role === "landlord" || role === "tenant" || role === "admin" || role === "marketer" || role === "client";
 }
 
 async function loadSession(): Promise<Session | null> {
@@ -39,9 +40,13 @@ async function loadSession(): Promise<Session | null> {
     const { count } = await supabase.from("tenancies").select("id", { count: "exact", head: true });
     onHold = (count ?? 0) === 0;
   }
+  const { data: marketer } = role === "marketer"
+    ? await supabase.from("marketplace_marketers").select("status").eq("marketer_id", user.id).maybeSingle()
+    : { data: null };
   return {
     userId: p.id, role, name: p.full_name ?? user.email ?? "there", email: p.email ?? undefined, phone: p.phone, phoneVerified: Boolean(p.phone_verified),
     landlordState: (p.landlord_state as LandlordState | null) ?? undefined, landlordOnHold: onHold,
+    marketerActive: role === "marketer" ? marketer?.status === "active" : undefined,
     mfa: role === "admin" ? await adminMfaState() : undefined,
   };
 }
@@ -69,6 +74,12 @@ export const supabaseApi: Api = {
     const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, phone }, emailRedirectTo: location.origin } });
     if (error) throw new ApiError(400, /password/i.test(error.message) ? error.message : "We could not create the account. Check your details and try again.");
     // An email that is already registered looks identical to a new one, so nobody can discover who has an account.
+  },
+  async signUpMarketplace({ name, email, phone, password }, role) {
+    const { error } = await supabase.auth.signUp({
+      email, password, options: { data: { full_name: name, phone, requested_role: role }, emailRedirectTo: location.origin },
+    });
+    if (error) throw new ApiError(400, /password/i.test(error.message) ? error.message : "We could not create the account. Check your details and try again.");
   },
 
   async verifyEmailCode(email, code) {
@@ -148,6 +159,7 @@ export const supabaseApi: Api = {
   },
 
   landlord: landlordApi,
+  marketplace: marketplaceApi,
   tenant: tenantApi,
   site: siteApi,
 };

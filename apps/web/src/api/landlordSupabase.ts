@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
   BankPaymentSetup, BroadcastResult, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
-  PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
+  ManualRentPaymentClaim, PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
 } from "./types";
 
 type Row = Record<string, unknown>;
@@ -17,14 +17,28 @@ async function myHouses(): Promise<LandlordHouse[]> {
     .select("id, title, house_type, rent_amount, deposit_amount, total_units, vacant_units, amenities, county_id, town_id").order("created_at");
   if (error) throw dbError(error);
   if (!rows?.length) return [];
-  const [{ data: counties }, { data: towns }, { data: photos }] = await Promise.all([
+  const [countyResult, townResult, photoResult] = await Promise.all([
     supabase.from("counties").select("id, name"),
     supabase.from("towns").select("id, name").in("id", rows.map((r) => r.town_id)),
-    supabase.from("house_photos").select("house_id").in("house_id", rows.map((r) => r.id)),
+    supabase.from("house_photos").select("house_id, position, storage_path").in("house_id", rows.map((r) => r.id)).order("position"),
   ]);
+  if (countyResult.error) throw dbError(countyResult.error);
+  if (townResult.error) throw dbError(townResult.error);
+  if (photoResult.error) throw dbError(photoResult.error);
+  const counties = countyResult.data;
+  const towns = townResult.data;
+  const photos = photoResult.data;
   const county = new Map((counties ?? []).map((c) => [c.id, c.name]));
   const town = new Map((towns ?? []).map((t) => [t.id, t.name]));
-  return rows.map((r) => toListing({ ...r, county: county.get(r.county_id), town: town.get(r.town_id), verified_landlord: true, photo_count: (photos ?? []).filter((p) => p.house_id === r.id).length }));
+  const photosByHouse = new Map<string, typeof photos>();
+  for (const photo of photos ?? []) photosByHouse.set(photo.house_id, [...(photosByHouse.get(photo.house_id) ?? []), photo]);
+  return rows.map((r) => {
+    const housePhotos = photosByHouse.get(r.id) ?? [];
+    return {
+      ...toListing({ ...r, county: county.get(r.county_id), town: town.get(r.town_id), verified_landlord: true, photo_count: housePhotos.length }),
+      coverPhoto: housePhotos[0] ? supabase.storage.from("house-photos").getPublicUrl(housePhotos[0].storage_path).data.publicUrl : undefined,
+    };
+  });
 }
 
 const ok = <T>(r: { data: T | null; error: Parameters<typeof dbError>[0] | null }): T => { if (r.error) throw dbError(r.error); return r.data as T; };
@@ -233,8 +247,12 @@ export const landlordApi: LandlordApi = {
   },
 
   async visits(): Promise<VisitItem[]> {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
     const [v, h] = await Promise.all([
-      supabase.from("visit_requests").select("id, house_id, visitor_name, visitor_phone, preferred_date, time_window, status, scheduled_date, scheduled_window, reschedule_count").order("created_at", { ascending: false }).limit(100),
+      supabase.from("visit_requests").select("id, house_id, visitor_name, visitor_phone, preferred_date, time_window, status, scheduled_date, scheduled_window, reschedule_count, created_at")
+        .gte("created_at", sixMonthsAgo.toISOString()).order("created_at", { ascending: false }).limit(1000),
       supabase.from("houses").select("id, title"),
     ]);
     const title = new Map((ok(h) as Row[]).map((x) => [x.id as string, x.title as string]));
@@ -242,7 +260,29 @@ export const landlordApi: LandlordApi = {
       id: r.id as string, visitorName: r.visitor_name as string, visitorPhone: r.visitor_phone as string, houseTitle: title.get(r.house_id as string) ?? "",
       preferredDate: r.preferred_date as string, timeWindow: r.time_window as string,
       scheduledDate: (r.scheduled_date as string | null) ?? null, scheduledWindow: (r.scheduled_window as string | null) ?? null,
-      status: r.status as VisitStatus, reschedules: num(r.reschedule_count),
+      status: r.status as VisitStatus, reschedules: num(r.reschedule_count), createdAt: r.created_at as string,
+    }));
+  },
+  async dashboardLedger(): Promise<LedgerRow[]> {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    const [ledger, tenancies] = await Promise.all([
+      supabase.from("ledger_entries")
+        .select("id, tenancy_id, kind, bucket, amount, method, provider_ref, receipt_no, reverses_id, created_at")
+        .gte("created_at", sixMonthsAgo.toISOString()).order("created_at", { ascending: false }).limit(2000),
+      supabase.from("tenancies").select("id, tenant_name, unit_label"),
+    ]);
+    const ten = new Map((ok(tenancies) as Row[]).map((row) => [row.id as string, row]));
+    const rows = ok(ledger) as Row[];
+    const reversed = new Set(rows.filter((row) => row.reverses_id).map((row) => row.reverses_id as string));
+    return rows.map((row): LedgerRow => ({
+      id: row.id as string, tenancyId: row.tenancy_id as string,
+      tenantName: (ten.get(row.tenancy_id as string)?.tenant_name as string) ?? "",
+      unit: (ten.get(row.tenancy_id as string)?.unit_label as string) ?? "",
+      kind: row.kind as LedgerRow["kind"], bucket: row.bucket as LedgerRow["bucket"], amount: num(row.amount), method: row.method as string,
+      ref: row.provider_ref as string, receipt: row.receipt_no as string,
+      at: row.created_at as string, reversed: reversed.has(row.id as string),
     }));
   },
   async updateVisit(visitId: string, patch: VisitPatch) {
@@ -302,14 +342,16 @@ export const landlordApi: LandlordApi = {
   },
   inviteTenant: (tenancyId) => callFunction<InviteResult>("invite-create", { kind: "tenant", tenancyId }),
   async payments(): Promise<PaymentsOverview> {
-    const [l, t, h, p, d, a, b] = await Promise.all([
-      supabase.from("ledger_entries").select("id, tenancy_id, kind, amount, method, provider_ref, receipt_no, reverses_id, created_at").order("created_at", { ascending: false }).limit(150),
+    const [l, t, h, p, d, a, b, m] = await Promise.all([
+      supabase.from("ledger_entries").select("id, tenancy_id, kind, bucket, amount, method, provider_ref, receipt_no, reverses_id, created_at")
+        .order("created_at", { ascending: false }).limit(150),
       supabase.from("tenancies").select("id, tenant_name, unit_label"),
       supabase.from("held_payments").select("id, amount, bill_ref, reason, provider_ref, created_at").is("resolved_at", null).order("created_at", { ascending: false }),
       supabase.from("payouts").select("id, amount, status, destination, created_at, paid_at, provider_ref").order("created_at", { ascending: false }).limit(50),
       supabase.from("payout_destinations").select("kind, destination, account_ref, verified").maybeSingle(),
       supabase.from("payment_accounts").select("mode").maybeSingle(),
       supabase.from("tenancy_balances").select("balance"),
+      supabase.from("manual_rent_payment_claims").select("id, tenancy_id, landlord_id, amount, transaction_message, status, submitted_at").order("submitted_at", { ascending: false }).limit(100),
     ]);
     const who = new Map((ok(t) as Row[]).map((x) => [x.id as string, x]));
     const rows = ok(l) as Row[];
@@ -317,15 +359,26 @@ export const landlordApi: LandlordApi = {
     const dest = ok(d) as Row | null;
     return {
       ledger: rows.map((r): LedgerRow => ({ id: r.id as string, tenancyId: r.tenancy_id as string, tenantName: (who.get(r.tenancy_id as string)?.tenant_name as string) ?? "", unit: (who.get(r.tenancy_id as string)?.unit_label as string) ?? "",
-        kind: r.kind as LedgerRow["kind"], amount: num(r.amount), method: r.method as string, ref: r.provider_ref as string, receipt: r.receipt_no as string, at: r.created_at as string, reversed: reversed.has(r.id as string) })),
+        kind: r.kind as LedgerRow["kind"], bucket: r.bucket as LedgerRow["bucket"], amount: num(r.amount), method: r.method as string, ref: r.provider_ref as string, receipt: r.receipt_no as string, at: r.created_at as string, reversed: reversed.has(r.id as string) })),
       held: (ok(h) as Row[]).map((r): HeldPayment => ({ id: r.id as string, amount: num(r.amount), billRef: (r.bill_ref as string | null) ?? null, reason: r.reason as string, at: r.created_at as string, ref: r.provider_ref as string })),
       payouts: (ok(p) as Row[]).map((r): PayoutRow => ({ id: r.id as string, amount: num(r.amount), status: r.status as string, destination: r.destination as string, at: r.created_at as string, paidAt: (r.paid_at as string | null) ?? null, ref: (r.provider_ref as string | null) ?? null })),
+      manualClaims: (ok(m) as Row[]).map((r): ManualRentPaymentClaim => ({
+        id: r.id as string, tenancyId: r.tenancy_id as string,
+        tenantName: (who.get(r.tenancy_id as string)?.tenant_name as string) ?? "",
+        unit: (who.get(r.tenancy_id as string)?.unit_label as string) ?? "",
+        amount: num(r.amount), transactionMessage: r.transaction_message as string,
+        status: r.status as ManualRentPaymentClaim["status"], submittedAt: r.submitted_at as string,
+      })),
       destination: dest ? { kind: dest.kind as "mpesa_phone" | "bank_paybill", destination: dest.destination as string, accountRef: (dest.account_ref as string | null) ?? null, verified: Boolean(dest.verified) } : null,
       mode: ((ok(a) as Row | null)?.mode as PaymentAccount["mode"]) ?? "platform",
       owed: (ok(b) as Row[]).reduce((s, r) => s + Math.max(0, num(r.balance)), 0),
     };
   },
   async resolveHeld(heldId, tenancyId) { const { error } = await supabase.rpc("resolve_held_payment", { p_held: heldId, p_tenancy: tenancyId }); if (error) throw dbError(error); },
+  async reviewManualRentPayment(claimId, received) {
+    const { error } = await supabase.rpc("review_manual_rent_payment", { p_claim: claimId, p_received: received });
+    if (error) throw dbError(error);
+  },
   async reversePayment(entryId, reason) { const { error } = await supabase.rpc("reverse_payment", { p_entry: entryId, p_reason: reason }); if (error) throw dbError(error); },
   async savePayoutDestination(kind, destination, accountRef) {
     const uid = await currentUserId();
@@ -346,7 +399,7 @@ export const landlordApi: LandlordApi = {
   async bankPaymentSetup(): Promise<BankPaymentSetup> {
     const [banksResult, accountResult, testResult, profileResult] = await Promise.all([
       supabase.from("banks").select("id, name, paybill").eq("active", true).order("name"),
-      supabase.from("landlord_bank_accounts").select("bank_id, account_number, verified, test_payment_receipt, verified_at").maybeSingle(),
+      supabase.from("landlord_bank_accounts").select("bank_id, account_number, account_name, verified, test_payment_receipt, verified_at").maybeSingle(),
       supabase.from("bank_test_payments").select("status, mpesa_receipt, bank_id, account_number, paybill, failure_reason, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("profiles").select("phone, phone_verified").maybeSingle(),
     ]);
@@ -359,6 +412,7 @@ export const landlordApi: LandlordApi = {
       account: account ? {
         bankId: num(account.bank_id),
         accountNumber: (account.account_number as string | null) ?? null,
+        accountName: (account.account_name as string | null) ?? null,
         verified: Boolean(account.verified),
         testPaymentReceipt: (account.test_payment_receipt as string | null) ?? null,
         verifiedAt: (account.verified_at as string | null) ?? null,
@@ -375,6 +429,12 @@ export const landlordApi: LandlordApi = {
       phone: (profile?.phone as string | null) ?? null,
       phoneVerified: Boolean(profile?.phone_verified),
     };
+  },
+  async saveManualBankAccount(bankId, accountNumber, accountName) {
+    const { error } = await supabase.rpc("save_landlord_manual_bank_account", {
+      p_bank_id: bankId, p_account_number: accountNumber, p_account_name: accountName,
+    });
+    if (error) throw dbError(error);
   },
   async saveBankPaymentAccount(bankId, accountNumber) {
     const { data, error } = await supabase.rpc("save_landlord_bank_account", { p_bank_id: bankId, p_account_number: accountNumber });

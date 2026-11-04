@@ -1,6 +1,6 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { freshDb, as, user, server, mkUser, sql, rejects, buildWorld } from "./helpers.mjs";
+import { freshDb, as, user, anon, server, mkUser, sql, rejects, buildWorld } from "./helpers.mjs";
 
 const one = async (db, text, params) => (await sql(db, text, params))[0];
 const count = async (db, who, table, where = "true", params = []) => (await as(db, who, `select count(*)::int n from ${table} where ${where}`, params))[0].n;
@@ -30,6 +30,48 @@ describe("admin access needs the authenticator code", () => {
     assert.ok(rows.every((r) => !Object.keys(r).some((k) => /tenant|rent|ledger|complaint/i.test(k))));
     const a = rows.find((r) => r.landlord_id === w.la);
     assert.deepEqual({ units: a.units, price: a.monthly_price }, { units: 6, price: 1000 });   // hA has 4 units and hA2 has 2
+  });
+});
+
+describe("admin dashboard aggregates", () => {
+  let db, w;
+  before(async () => {
+    db = await freshDb();
+    w = await buildWorld(db);
+    await sql(db, `insert into visit_requests(house_id,visitor_name,visitor_phone,preferred_date,time_window)
+      values ($1,'Visitor Name','0712345678',current_date,'Morning')`, [w.hA]);
+    await sql(db, "insert into subscription_payments(landlord_id,amount_kes,provider_ref) values ($1,1500,'DASHBOARD-REV')", [w.la]);
+    const marketer = await mkUser(db, "dashboard-marketer@market.ke", { meta: { requested_role: "marketer" } });
+    await sql(db, "update profiles set full_name='Dashboard Marketer' where id=$1", [marketer]);
+    await sql(db, "update marketplace_marketers set status='active', activated_at=now(), activation_receipt='DASH-ACT' where marketer_id=$1", [marketer]);
+  });
+
+  it("returns only aggregate dashboard metrics to a verified admin", async () => {
+    const [{ total_properties, monthly_bookings, total_revenue, active_marketers }] =
+      await as(db, user(w.admin), "select * from admin_dashboard_summary");
+    assert.deepEqual(
+      { total_properties, monthly_bookings, total_revenue: Number(total_revenue), active_marketers },
+      { total_properties: 3, monthly_bookings: 1, total_revenue: 1500, active_marketers: 1 },
+    );
+    const today = (await as(db, user(w.admin), "select bookings,revenue from admin_dashboard_daily where month=current_date"))[0];
+    assert.deepEqual({ bookings: today.bookings, revenue: Number(today.revenue) }, { bookings: 1, revenue: 1500 });
+    const county = (await as(db, user(w.admin), "select county,bookings,share from admin_dashboard_counties"))[0];
+    assert.deepEqual(county, { county: "Bungoma", bookings: 1, share: 100 });
+    const marketer = (await as(db, user(w.admin), "select marketer_name, listings, bookings, earnings from admin_dashboard_marketer_performance"))[0];
+    assert.deepEqual(marketer, { marketer_name: "Dashboard Marketer", listings: 0, bookings: 0, earnings: "0" });
+    const bookingStatuses = await as(db, user(w.admin), "select status, booking_count from admin_dashboard_booking_statuses order by status");
+    assert.equal(bookingStatuses.length, 8);
+    assert.equal(bookingStatuses.find((row) => row.status === "new")?.booking_count, 1);
+    assert.ok(bookingStatuses.filter((row) => row.status !== "new").every((row) => row.booking_count === 0));
+  });
+
+  it("does not reveal aggregates to landlords, tenants, or password-only admins", async () => {
+    for (const view of ["admin_dashboard_summary", "admin_dashboard_daily", "admin_dashboard_counties", "admin_dashboard_marketer_performance", "admin_dashboard_booking_statuses"]) {
+      assert.equal(await count(db, user(w.la), view), 0);
+      assert.equal(await count(db, user(w.ta), view), 0);
+      assert.equal(await count(db, user(w.admin, "aal1"), view), 0);
+    }
+    await rejects(as(db, anon, "select * from admin_dashboard_summary"), /permission denied/);
   });
 });
 

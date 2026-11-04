@@ -130,6 +130,189 @@ html[data-perf="lite"] *, html[data-perf="lite"] *::before, html[data-perf="lite
 @media (hover: none) { .cursor-glow::after { display: none; } }
 html[data-perf="lite"] .cursor-glow::after { display: none; }
 
+/* ---------- Authenticated dashboard workspace ---------- */
+.dashboard-shell {
+  --color-graphite-950: #0f172a;
+  --color-graphite-900: #ffffff;
+  --color-graphite-800: #f8fafc;
+  --color-graphite-700: #e2e8f0;
+  --color-graphite-600: #cbd5e1;
+  --color-graphite-500: #94a3b8;
+  --color-graphite-400: #64748b;
+  --color-graphite-300: #475569;
+  --color-graphite-200: #334155;
+  --color-ember-300: #60a5fa;
+  --color-ember-400: #3b82f6;
+  --color-ember-500: #2563eb;
+  --color-ember-600: #1d4ed8;
+  --color-bone: #0f172a;
+  --color-danger: #dc2626;
+  color-scheme: light;
+  min-height: 100dvh;
+  background: #f4f7fc;
+  color: #0f172a;
+}
+.dashboard-sidebar {
+  z-index: 1;
+  color: #f8fafc;
+  background: linear-gradient(180deg, #102347 0%, #142e59 100%);
+  box-shadow: 8px 0 28px rgb(15 35 71 / 0.12);
+}
+.dashboard-brand { color: #f8fafc; }
+.dashboard-sidebar-promo {
+  border: 1px solid rgb(147 197 253 / 0.2);
+  background: linear-gradient(145deg, rgb(37 99 235 / 0.3), rgb(30 64 175 / 0.15));
+}
+.dashboard-nav-active {
+  color: #fff;
+  background: #2563eb;
+  box-shadow: 0 5px 14px rgb(37 99 235 / 0.22);
+}
+.dashboard-nav-idle { color: #cbd5e1; }
+.dashboard-nav-idle:hover { color: #fff; background: rgb(255 255 255 / 0.08); }
+.dashboard-topbar {
+  border-bottom: 1px solid #e6ebf3;
+  background: rgb(255 255 255 / 0.96);
+  backdrop-filter: blur(12px);
+}
+.dashboard-icon-button, .dashboard-menu-button {
+  color: #334155;
+  background: #f1f5f9;
+}
+.dashboard-icon-button:hover, .dashboard-menu-button:hover { background: #e2e8f0; }
+.dashboard-shell main .glass,
+.dashboard-shell main .glass-quiet {
+  border: 1px solid #e6ebf3;
+  border-radius: 0.875rem;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(15 35 71 / 0.045);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.dashboard-shell main .glass-hero {
+  background: linear-gradient(110deg, #e8f2ff 0%, #f5f9ff 72%, #fff 100%);
+}
+.dashboard-shell main .cursor-glow::after { background: radial-gradient(420px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgb(59 130 246 / 0.12), transparent 60%); }
+.dashboard-shell main [class*="border-white/"] { border-color: #e2e8f0 !important; }
+.dashboard-shell main [class*="bg-white/"] { background-color: #f8fafc !important; }
+.dashboard-shell main .skeleton {
+  background: linear-gradient(90deg, #e9eff8, #f8fafc, #e9eff8);
+  background-size: 200% 100%;
+}
+.dashboard-shell main input,
+.dashboard-shell main textarea,
+.dashboard-shell main select {
+  border-color: #cbd5e1;
+  background-color: #fff;
+  color: #0f172a;
+}
+.dashboard-shell main input::placeholder,
+.dashboard-shell main textarea::placeholder { color: #94a3b8; }
+.dashboard-sidebar .glass-quiet {
+  border-color: rgb(147 197 253 / 0.2);
+  background: rgb(255 255 255 / 0.06);
+  color: #f8fafc;
+}
+.dashboard-sidebar .text-graphite-300 { color: #cbd5e1 !important; }
+.dashboard-sidebar .text-graphite-400 { color: #94a3b8 !important; }
+.dashboard-shell h1,
+.dashboard-shell h2,
+.dashboard-shell h3,
+.dashboard-shell main .font-display {
+  font-family: var(--font-sans);
+}
+.dashboard-shell main .glass-hero::before {
+  background: linear-gradient(135deg, rgb(59 130 246 / 0.55), rgb(59 130 246 / 0) 38%);
+}
+.dashboard-shell main button[class*="bg-ember-500"] { color: #fff; }
+
+.dashboard-shell[data-dashboard-theme="landlord"],
+.dashboard-shell[data-dashboard-theme="tenant"] {
+  --color-ember-300: #fdba74;
+  --color-ember-400: #fb923c;
+  --color-ember-500: #f97316;
+  --color-ember-600: #ea580c;
+}
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-sidebar {
+  background: linear-gradient(180deg, #62001c 0%, #85002a 100%);
+  box-shadow: 8px 0 28px rgb(101 0 29 / 0.16);
+}
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-brand-mark {
+  background: #f97316;
+}
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-brand-country { color: #fecdd3; }
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-sidebar-promo {
+  border-color: rgb(251 146 60 / 0.28);
+  background: linear-gradient(145deg, rgb(249 115 22 / 0.22), rgb(127 29 29 / 0.28));
+}
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-nav-active {
+  color: #fff;
+  background: #f15a24;
+  box-shadow: 0 5px 14px rgb(241 90 36 / 0.25);
+}
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-nav-idle { color: #ffe4e6; }
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-nav-idle:hover { color: #fff; background: rgb(255 255 255 / 0.1); }
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-avatar { background: #ffe4e6; color: #881337; }
+.dashboard-shell[data-dashboard-theme="landlord"] .dashboard-sidebar-promo,
+.dashboard-landlord-upgrade {
+  border: 1px solid rgb(251 146 60 / 0.28);
+  background: linear-gradient(145deg, rgb(249 115 22 / 0.22), rgb(127 29 29 / 0.28));
+}
+.dashboard-landlord-city {
+  min-height: 3.75rem;
+  background: linear-gradient(0deg, rgb(101 0 29 / 0.12), transparent), url("/apartment-building.jpg") center 58% / cover;
+}
+.dashboard-shell[data-dashboard-theme="landlord"] main .dashboard-landlord-stat {
+  border-color: transparent;
+  box-shadow: 0 3px 12px rgb(15 35 71 / 0.035);
+}
+.dashboard-shell[data-dashboard-theme="landlord"] main .dashboard-landlord-stat.dashboard-stat-rose { background: #fcebf0; color: #9f1239; }
+.dashboard-shell[data-dashboard-theme="landlord"] main .dashboard-landlord-stat.dashboard-stat-green { background: #e8f7ef; color: #15803d; }
+.dashboard-shell[data-dashboard-theme="landlord"] main .dashboard-landlord-stat.dashboard-stat-blue { background: #eaf1ff; color: #1d4ed8; }
+.dashboard-shell[data-dashboard-theme="landlord"] main .dashboard-landlord-stat.dashboard-stat-orange { background: #fff1e5; color: #c2410c; }
+.dashboard-landlord-action { background: #fff7f4; }
+.dashboard-landlord-action:hover { background: #ffede3; }
+.dashboard-landlord-property:hover { border-color: #fdba74; }
+.dashboard-shell[data-dashboard-theme="landlord"] main {
+  padding: 1rem 1.15rem;
+}
+.dashboard-shell[data-dashboard-theme="landlord"] main .text-blue-700,
+.dashboard-shell[data-dashboard-theme="landlord"] main .text-blue-600 { color: #c2410c; }
+.dashboard-shell[data-dashboard-theme="landlord"] main .bg-blue-600 { background-color: #ea580c; }
+.dashboard-shell[data-dashboard-theme="landlord"] main .bg-blue-100,
+.dashboard-shell[data-dashboard-theme="landlord"] main .bg-blue-50 { background-color: #fff1e5; }
+
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-sidebar {
+  background: linear-gradient(180deg, #f25400 0%, #e64a00 100%);
+  box-shadow: 8px 0 28px rgb(234 88 12 / 0.16);
+}
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-brand-mark {
+  background: #ffc21a;
+  color: #9a3412;
+}
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-brand-country { color: #ffedd5; }
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-sidebar-promo {
+  border-color: rgb(255 255 255 / 0.25);
+  background: linear-gradient(145deg, rgb(154 52 18 / 0.3), rgb(124 45 18 / 0.22));
+}
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-nav-active {
+  color: #7c2d12;
+  background: #ffedd5;
+  box-shadow: 0 5px 14px rgb(124 45 18 / 0.2);
+}
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-nav-idle { color: #fff7ed; }
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-nav-idle:hover { color: #fff; background: rgb(124 45 18 / 0.2); }
+.dashboard-shell[data-dashboard-theme="tenant"] .dashboard-avatar { background: #ffedd5; color: #9a3412; }
+.dashboard-shell[data-dashboard-theme="tenant"] main .glass-hero {
+  background: linear-gradient(110deg, #fff1e8 0%, #fff8f2 72%, #fff 100%);
+}
+.dashboard-shell[data-dashboard-theme="tenant"] main .glass-hero::before {
+  background: linear-gradient(135deg, rgb(249 115 22 / 0.55), rgb(249 115 22 / 0) 38%);
+}
+.dashboard-shell[data-dashboard-theme="tenant"] main .text-blue-700,
+.dashboard-shell[data-dashboard-theme="tenant"] main .text-blue-600 { color: #c2410c; }
+.dashboard-shell[data-dashboard-theme="tenant"] main .bg-blue-600 { background-color: #ea580c; }
+
 /* ---------- House-themed motion ---------- */
 .px-1 { transform: translate3d(calc((var(--mx) - 0.5) * -10px), calc((var(--my) - 0.5) * -6px), 0); }
 .px-2 { transform: translate3d(calc((var(--mx) - 0.5) * -22px), calc((var(--my) - 0.5) * -10px), 0); }

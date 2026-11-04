@@ -34,7 +34,7 @@ const sections = [
   {
     title: "Payments, subscriptions and SMS credit",
     content: <>
-      <p>Payments are processed or recorded through the configured M-Pesa Daraja flows. Depending on the landlord's chosen setup, rent may be paid to the platform Paybill and later paid out by the platform, or paid directly to the landlord's own Paybill. Where rent is received by the platform, payouts may be processed manually and can take time to reconcile. Check the payment status and contact support if a payment is not reflected.</p>
+      <p>Payments are processed or recorded through the configured M-Pesa Daraja flows. Rent payments are enabled only when the landlord has connected a verified payment account that settles directly to the landlord. NyumbaPlug does not collect, hold, or pay out rent. If no verified direct payment method is active, the tenant payment option remains unavailable.</p>
       <p>Landlord subscriptions and SMS-wallet recharges are separate platform purchases. Subscription prices and SMS segment prices are shown in the service before payment and may change for future purchases with notice. SMS wallet balances are prepaid credits for eligible platform messages, not cash withdrawable from the wallet. Where a provider rejects a charged message, the system may refund the corresponding wallet charge as shown in the product.</p>
       <p>Except where required by law or stated in the service, completed digital purchases are not refundable merely because you change your mind. This does not limit rights that cannot lawfully be excluded.</p>
     </>,

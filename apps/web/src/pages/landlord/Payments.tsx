@@ -1,17 +1,15 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "@/api";
 import type { LedgerRow } from "@/api/types";
 import { ToLet } from "@/components/motion/Doodles";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
 import { Field, SelectField } from "@/components/ui/Field";
+import { Chip } from "@/components/ui/Chip";
 import { ErrorNote, PageHead } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
 import { Stats } from "@/components/ui/Stats";
 import { useLive, useLiveMutation } from "@/features/live";
 import { fmtDate, formatKes } from "@/lib/format";
-import { kenyanPhone } from "@rh/shared";
 
 function Reverse({ row }: { row: LedgerRow }) {
   const rev = useLiveMutation("landlord", (reason: string) => api.landlord.reversePayment(row.id, reason));
@@ -30,32 +28,63 @@ function Reverse({ row }: { row: LedgerRow }) {
   );
 }
 
-export default function Payments() {
+export default function Payments({ embedded = false }: { embedded?: boolean }) {
   const { data, isPending, error } = useLive("landlord", "payments", () => api.landlord.payments());
   const tenants = useLive("landlord", "tenants", () => api.landlord.tenants());
   const resolve = useLiveMutation("landlord", (v: { held: string; tenancy: string }) => api.landlord.resolveHeld(v.held, v.tenancy));
-  const dest = useLiveMutation("landlord", (v: { kind: "mpesa_phone" | "bank_paybill"; destination: string; accountRef: string | null }) => api.landlord.savePayoutDestination(v.kind, v.destination, v.accountRef));
+  const reviewManual = useLiveMutation("landlord", (v: { claimId: string; received: boolean }) =>
+    api.landlord.reviewManualRentPayment(v.claimId, v.received));
   const [pick, setPick] = useState<Record<string, string>>({});
-  const [d, setD] = useState({ kind: "mpesa_phone" as "mpesa_phone" | "bank_paybill", destination: "", accountRef: "" });
-  const [dErr, setDErr] = useState<string>();
-  const [showD, setShowD] = useState(false);
+  const [reviewing, setReviewing] = useState<{ id: string; received: boolean } | null>(null);
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const month = (data?.ledger ?? []).filter((l) => new Date(l.at) >= monthStart).reduce((a, l) => a + (l.kind === "reversal" ? -l.amount : l.kind === "rent_payment" ? l.amount : 0), 0);
 
-  const saveDest = () => {
-    if (d.kind === "mpesa_phone") { const p = kenyanPhone.safeParse(d.destination); if (!p.success) return setDErr(p.error.issues[0]?.message); dest.mutate({ kind: d.kind, destination: p.data, accountRef: null }, { onSuccess: () => setShowD(false) }); }
-    else { if (!/^\d{5,7}$/.test(d.destination)) return setDErr("Enter the bank's paybill number (5 to 7 digits)"); if (d.accountRef.trim().length < 3) return setDErr("Enter your account number at that bank"); dest.mutate({ kind: d.kind, destination: d.destination, accountRef: d.accountRef.trim() }, { onSuccess: () => setShowD(false) }); }
-    setDErr(undefined);
-  };
-
   return (
-    <div className="grid gap-4">
-      <PageHead title="Payments" sub="Every shilling, recorded. Entries are never edited: a mistake is fixed with a reversal." action={<Link to="/landlord/mpesa"><Button variant="glass" size="sm">M-Pesa setup</Button></Link>} />
+    <div id="ledger" className="grid gap-4">
+      {!embedded && <PageHead title="Payments" sub="Every shilling, recorded. Entries are never edited: a mistake is fixed with a reversal." />}
       <ErrorNote error={error} />
       <Stats loading={isPending} items={[
         { label: "Received this month", value: formatKes(month), tone: "ok" }, { label: "Still owed", value: formatKes(data?.owed ?? 0), tone: (data?.owed ?? 0) > 0 ? "warn" : undefined },
-        { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : data?.mode === "bank_paybill" ? "Bank Paybill" : "Platform", note: data?.mode === "platform" ? "paid out to you" : "settles to your account" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
+        { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : data?.mode === "bank_paybill" ? "Your bank account" : "Not configured", note: data?.mode === "own" ? "direct landlord settlement" : data?.mode === "bank_paybill" ? "manual transfers need your confirmation" : "choose a rent payment method in setup" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
       ]} />
+
+      {data && data.manualClaims.length > 0 && (
+        <Panel className="grid gap-3 p-5 sm:p-6">
+          <h2 className="text-xl">Manual bank transfer claims</h2>
+          <p className="text-sm text-graphite-300">A pasted transaction message is an unverified claim. Check your bank account independently; only mark received after confirming the funds arrived.</p>
+          <ErrorNote error={reviewManual.error} />
+          {data.manualClaims.map((claim) => (
+            <div key={claim.id} className="grid gap-3 rounded-xl border border-white/10 bg-white/4 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">{claim.tenantName} · unit {claim.unit} · {formatKes(claim.amount)}</p>
+                <Chip tone={claim.status === "received" ? "ok" : claim.status === "rejected" ? "danger" : "ember"}>{claim.status}</Chip>
+              </div>
+              <p className="text-sm text-graphite-400">Submitted {fmtDate(claim.submittedAt)}</p>
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-graphite-950/60 p-3 text-sm text-graphite-200">{claim.transactionMessage}</pre>
+              {claim.status === "pending" && (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={reviewManual.isPending} onClick={() => setReviewing({ id: claim.id, received: true })}>Mark received</Button>
+                  <Button variant="ghost" size="sm" disabled={reviewManual.isPending} onClick={() => setReviewing({ id: claim.id, received: false })}>Reject claim</Button>
+                </div>
+              )}
+              {reviewing?.id === claim.id && (
+                <div className="grid gap-2 rounded-lg border border-ember-500/30 bg-ember-500/8 p-3">
+                  <p className="text-sm">{reviewing.received
+                    ? `Confirm that you independently verified ${formatKes(claim.amount)} reached your bank account. This will add it to the rent ledger.`
+                    : "Reject this claim? It will not be added to the rent ledger."}</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" loading={reviewManual.isPending} onClick={() => reviewManual.mutate(
+                      { claimId: claim.id, received: reviewing.received },
+                      { onSuccess: () => setReviewing(null) },
+                    )}>{reviewing.received ? "Confirm funds received" : "Confirm rejection"}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setReviewing(null)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </Panel>
+      )}
 
       {data && data.held.length > 0 && (
         <Panel className="grid gap-3 p-5 sm:p-6">
@@ -72,30 +101,23 @@ export default function Payments() {
         </Panel>
       )}
 
-      {data?.mode === "platform" && (
-        <Panel className="grid gap-3 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl">Where we pay you</h2>{!showD && <Button variant="glass" size="sm" onClick={() => setShowD(true)}>{data.destination ? "Change" : "Add"}</Button>}</div>
-          {data.destination ? <p>{data.destination.kind === "mpesa_phone" ? `M-Pesa ${data.destination.destination}` : `Bank paybill ${data.destination.destination}, account ${data.destination.accountRef}`} {data.destination.verified ? <Chip tone="ok">Verified</Chip> : <Chip tone="ember">Waiting to be verified</Chip>}</p> : <p className="text-graphite-300">Add where to send your rent. Collected rent is paid out here.</p>}
-          {showD && (
-            <div className="grid gap-3">
-              <SelectField label="Pay me by" value={d.kind} onChange={(e) => setD({ ...d, kind: e.target.value as typeof d.kind })}><option value="mpesa_phone">M-Pesa to my phone</option><option value="bank_paybill">Bank, through its paybill</option></SelectField>
-              <Field label={d.kind === "mpesa_phone" ? "M-Pesa phone number" : "Bank paybill number"} value={d.destination} onChange={(e) => setD({ ...d, destination: e.target.value })} />
-              {d.kind === "bank_paybill" && <Field label="Your account number at the bank" value={d.accountRef} onChange={(e) => setD({ ...d, accountRef: e.target.value })} />}
-              {dErr && <p role="alert" className="text-sm text-danger">{dErr}</p>}<ErrorNote error={dest.error} />
-              <div className="flex gap-2"><Button loading={dest.isPending} onClick={saveDest}>Save</Button><Button variant="ghost" onClick={() => setShowD(false)}>Cancel</Button></div>
-            </div>
-          )}
-          {data.payouts.length > 0 && <ul className="divide-y divide-white/8">{data.payouts.map((p) => <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5"><span>{fmtDate(p.at)} · {formatKes(p.amount)}</span><span className="flex items-center gap-2 text-sm text-graphite-300">{p.ref}<Chip tone={p.status === "paid" ? "ok" : "ember"}>{p.status}</Chip></span></li>)}</ul>}
+
+
+      {data && data.payouts.length > 0 && (
+        <Panel className="p-5 sm:p-6">
+          <h2 className="text-xl">Historical platform payouts</h2>
+          <p className="mt-1 text-sm text-graphite-300">These are records from the previous collection model. New rent is never collected by NyumbaPlug or placed in this payout queue.</p>
+          <ul className="mt-3 divide-y divide-white/8">{data.payouts.map((p) => <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5"><span>{fmtDate(p.at)} · {formatKes(p.amount)}</span><span className="flex items-center gap-2 text-sm text-graphite-300">{p.ref}<Chip tone={p.status === "paid" ? "ok" : "ember"}>{p.status}</Chip></span></li>)}</ul>
         </Panel>
       )}
 
       <Panel className="p-5 sm:p-6">
         <h2 className="text-xl">Ledger</h2>
-        {data?.ledger.length === 0 && <ToLet title="No payments yet" note="Rent appears here the moment a tenant pays." />}
+        {data?.ledger.length === 0 && <ToLet title="No payments yet" note="Rent appears here after Safaricom confirms a payment or you confirm a manual bank transfer." />}
         <ul className="mt-3 divide-y divide-white/8">
           {data?.ledger.map((l) => (
             <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <div><p className="font-medium">{l.tenantName} <span className="text-graphite-400">unit {l.unit}</span></p><p className="text-sm text-graphite-300">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : l.method === "bank_paybill" ? "Bank Paybill" : l.method === "paystack" ? "External checkout (historical)" : "Reversal"} · {l.ref}</p></div>
+              <div><p className="font-medium">{l.tenantName} <span className="text-graphite-400">unit {l.unit}</span></p><p className="text-sm text-graphite-300">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : l.method === "bank_paybill" ? "Bank Paybill (historical)" : l.method === "manual_transfer" ? "Manual bank transfer" : l.method === "paystack" ? "External checkout (historical)" : "Reversal"} · {l.ref}</p></div>
               <div className="flex flex-wrap items-center gap-2">{l.reversed && <Chip>Reversed</Chip>}{l.kind === "reversal" && <Chip tone="danger">Reversal</Chip>}<span className={l.kind === "reversal" ? "text-danger" : ""}>{l.kind === "reversal" ? "−" : ""}{formatKes(l.amount)}</span><Reverse row={l} /></div>
             </li>
           ))}

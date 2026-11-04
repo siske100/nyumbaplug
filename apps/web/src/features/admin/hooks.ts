@@ -11,6 +11,10 @@ export const useAdminLandlords = () => { const u = useUid(); return useQuery({ q
 export const useAdminKyc = () => { const u = useUid(); return useQuery({ queryKey: qk.admin.kyc(u), queryFn: () => api.admin.kycQueue(), enabled: !!u, ...opts }); };
 export const useAdminPayments = () => { const u = useUid(); return useQuery({ queryKey: qk.admin.payments(u), queryFn: () => api.admin.payments(), enabled: !!u, ...opts }); };
 export const useAdminCelcom = () => { const u = useUid(); return useQuery({ queryKey: qk.admin.celcom(u), queryFn: () => api.admin.celcom(), enabled: !!u, ...opts }); };
+export const useAdminBookingStatuses = () => {
+  const u = useUid();
+  return useQuery({ queryKey: [...qk.admin.all(u), "booking-statuses"], queryFn: () => api.admin.bookingStatuses(), enabled: !!u, ...opts });
+};
 /** Signed links last one minute, so they are fetched only when the admin opens a submission. */
 export const useKycFileUrl = (path: string | null) =>
   useQuery({ queryKey: ["admin", "kyc-file", path], queryFn: () => api.admin.kycFileUrl(path!), enabled: !!path, staleTime: 45_000, gcTime: 60_000 });

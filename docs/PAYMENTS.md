@@ -1,27 +1,33 @@
 # Rent payments
 
-## Where a landlord can receive rent
+## Non-negotiable settlement rule
 
-Landlords select one route on the Payment setup page:
+NyumbaPlug does not collect, hold, pool, or pay out rent. A tenant rent payment is initiated only when the landlord has a connected and verified merchant account whose own Daraja credentials are used for that payment. The platform Paybill is reserved for NyumbaPlug subscriptions and SMS credit purchases; it is never a rent fallback. If the landlord's direct connection is missing, disconnected, or fails, the tenant cannot pay through the app and must contact the landlord.
 
-- **Platform Paybill:** rent reaches the platform Paybill and is paid out to the landlord's saved destination through the existing manual payout process.
-- **Landlord's own Daraja Paybill:** the landlord connects their Daraja credentials. M-Pesa prompts and manual Paybill payments go to their own Paybill.
-- **Bank Paybill:** tenants receive an M-Pesa prompt addressed to the configured bank Paybill and the landlord's bank account number. After saving bank details, the landlord sends a KES 10 test payment to that bank Paybill from the phone number entered during registration. Safaricom's callback and STK query must confirm it, and the landlord must then confirm the funds arrived in the bank account before the route can be selected. A receipt typed by the landlord is never accepted as proof. Use a business bank account; settlement is not instant.
+## Rent payment methods currently enabled
 
-Landlords can remove their saved bank account details and enter replacement details when their bank account changes. Removing the saved details switches rent back to Platform Paybill, clears verification, and retains the test-payment history.
+- **Landlord's own Daraja Paybill:** the landlord connects their own consumer key, consumer secret, passkey, and Paybill shortcode. The server tests the credentials, registers landlord-scoped C2B callback URLs, encrypts the credentials, and stores them server-side. STK prompts and manual C2B rent payments are scoped to that landlord's own Paybill and tenants.
+- **Manual bank transfer:** the landlord saves a bank, account number, and account-holder name, then selects this as the one active rent method. Tenants see those details and submit the transfer message together with their full outstanding balance. A message is only an unverified claim. The landlord must independently check their bank account and confirm receipt; only that server-side confirmation creates an append-only rent ledger entry. Rejected or pending claims do not affect the balance. A claim cannot be confirmed if the tenant's balance has changed since submission.
+
+The landlord selects exactly one active method. Tenants see and can use only that selected method; manual transfer does not trigger an STK prompt. Bank Paybill routing and platform-Paybill rent collection are disabled for new rent payments. The previous bank Paybill flow used NyumbaPlug's Daraja credentials with a bank shortcode; that does not establish that a provider has authorised direct settlement to every landlord. Existing bank test records and old ledger/payout history are retained for audit.
 
 ## Payment processing
 
-1. **Daraja rent:** the server calculates the balance and starts the M-Pesa prompt using the selected platform, landlord, or bank Paybill route.
-2. **Payment confirmation:** Safaricom callbacks and status checks confirm the prompt before the ledger records it. Bank Paybill attempts retain the selected receiving Paybill for reconciliation.
-3. **Bank test payments:** `daraja-stk` sends the test prompt using the platform Daraja credentials and the bank Paybill as the destination. Callback/query results are stored in `bank_test_payments`; server-side confirmation requires both Safaricom success and the landlord's separate receipt-of-funds confirmation.
-4. **Silent M-Pesa prompts:** every 5 minutes the server asks Safaricom about prompts older than 3 minutes and settles them. After 24 hours they are written off.
-5. **Landlord purchases** (subscription, SMS credit) always go to the platform Paybill by prompt, with the amount fixed by the database.
+### Daraja
 
-Subscriptions cost KES 1,000 per month for up to 20 houses, then KES 25 per additional house. The database calculates and validates the amount before a subscription payment can be recorded.
+1. The database calculates the tenant's outstanding balance.
+2. The server loads the landlord's connected Daraja credentials. If they are missing, not connected, or cannot be decrypted, the attempt fails closed; it never substitutes platform credentials.
+3. Safaricom sends the STK callback to the landlord-specific callback token. The server performs an STK query before crediting the ledger. Duplicate receipts are idempotent, mismatched amounts are held, and ledger entries remain append-only.
+4. Manual Paybill validation and confirmation are accepted only on the landlord-specific callback token. The platform callback token is rejected for tenant rent C2B.
 
-## What is tested, and what is not
+### Manual bank transfer
 
-Tested: Daraja callbacks, wrong-Paybill refusal, held payments, reconciliation, payouts, bank Paybill routing, and database access rules.
+1. The database checks that the tenant submits exactly the current full outstanding balance and permits only one pending claim per tenancy.
+2. The tenant's pasted transaction message is stored as claim information, not treated as evidence or posted to the ledger.
+3. Only the owning landlord can review the claim. Confirming receipt checks that the balance is still unchanged and atomically creates one `manual_transfer` ledger entry. Rejection never credits rent.
 
-Not tested without live accounts (see `LAUNCH-CHECKLIST.md`): the actual conversations with Safaricom and Celcom, bank Paybill routing acceptance, and provider account setup.
+Old pending platform/bank rent attempts are failed during migration so they cannot settle after cutover. NyumbaPlug subscription and SMS-credit purchases continue to use the platform Paybill through the separate platform purchase flow.
+
+## What is not yet enabled
+
+The app does **not** implement automated bank settlement, KCB Buni, Equity Jenga, or PesaLink. These integrations must be labeled **Coming soon**, not offered as active payment options, until each provider confirms a supported multi-merchant/direct-settlement arrangement and the relevant adapter, verification, callback, reconciliation, and security tests are implemented. Manual bank transfer is a separate landlord-reviewed route and does not claim to integrate with or verify any bank provider.

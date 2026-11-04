@@ -1,11 +1,12 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { freshDb, as, user, anon, server, sql, rejects, buildWorld } from "./helpers.mjs";
+import { freshDb, as, user, anon, server, sql, rejects, buildWorld, mkUser } from "./helpers.mjs";
 
 describe("money", () => {
   let db, w, hBig, n = 0;
   before(async () => {
     db = await freshDb(); w = await buildWorld(db);
+    await sql(db, "update payment_accounts set mode='own', status='connected', shortcode='600123', shortcode_kind='paybill', credentials_ciphertext='\\x01'::bytea where landlord_id in ($1,$2)", [w.la, w.lb]);
     hBig = (await sql(db, `insert into houses(landlord_id,title,county_id,town_id,house_type,rent_amount,deposit_amount,total_units,vacant_units)
       values ($1,'Big',39,(select id from towns where name='Bungoma Town'),'Bedsitter',6500,6500,50,50) returning id`, [w.la]))[0].id;
   });
@@ -110,15 +111,16 @@ describe("money", () => {
   });
   it("manual Paybill payments: wrong amounts and unknown accounts are refused up front", async () => {
     const t = await tenancy();
-    const v = async (ref, amt) => (await as(db, server, "select validate_c2b($1,$2) r", [ref, amt]))[0].r;
+    const v = async (ref, amt, landlord = w.la) => (await as(db, server, "select validate_c2b($1,$2,$3) r", [ref, amt, landlord]))[0].r;
     assert.equal(await v(t.tenancy_code, 6500), "ok");
     assert.equal(await v(t.tenancy_code.toLowerCase(), 6500), "ok");
     assert.equal(await v(t.tenancy_code, 3000), "amount_mismatch");
     assert.equal(await v("NOSUCH99", 6500), "unknown_account");
+    assert.equal(await v(t.tenancy_code, 6500, null), "unknown_account");
   });
-  it("manual Paybill payments are recorded once; mismatches wait for the landlord; unknown accounts wait for the platform", async () => {
+  it("manual Paybill payments are landlord-scoped; mismatches wait for that landlord; unknown accounts are rejected", async () => {
     const t = await tenancy();
-    const rec = async (ref, amt, receipt) => (await as(db, server, "select record_c2b_payment($1,$2,$3,'0733000000') id", [ref, amt, receipt]))[0].id;
+    const rec = async (ref, amt, receipt, landlord = w.la) => (await as(db, server, "select record_c2b_payment($1,$2,$3,'0733000000',$4) id", [ref, amt, receipt, landlord]))[0].id;
     const id = await rec(t.tenancy_code, 6500, "RCPT0008A");
     assert.ok(id); assert.equal(await rec(t.tenancy_code, 6500, "RCPT0008A"), id);
     assert.equal(await balance(t.id), 0);
@@ -126,50 +128,27 @@ describe("money", () => {
     assert.equal(await rec(t2.tenancy_code, 100, "RCPT0009A"), null);
     assert.equal(await rec("GHOST123", 6500, "RCPT0010A"), null);
     assert.equal((await as(db, user(w.la), "select count(*)::int n from held_payments where provider_ref='RCPT0009A'"))[0].n, 1);
-    assert.equal((await as(db, user(w.la), "select count(*)::int n from held_payments where provider_ref='RCPT0010A'"))[0].n, 0);   // not theirs
-    assert.equal((await as(db, user(w.admin), "select count(*)::int n from held_payments where provider_ref='RCPT0010A'"))[0].n, 1);
-    assert.equal((await as(db, user(w.admin), "select count(*)::int n from held_payments where provider_ref='RCPT0009A'"))[0].n, 0);  // tenant matters stay with the landlord
+    assert.equal((await as(db, user(w.admin), "select count(*)::int n from held_payments where provider_ref='RCPT0010A'"))[0].n, 0);  // unknown accounts are not accepted on a landlord Paybill
   });
   it("a landlord can resolve only their own held payments, into their own tenancies", async () => {
     const t = await tenancy();
-    await as(db, server, "select record_c2b_payment($1,100,'RCPT0011A','0733000000')", [t.tenancy_code]);
+    await as(db, server, "select record_c2b_payment($1,100,'RCPT0011A','0733000000',$2)", [t.tenancy_code, w.la]);
     const [{ id: held }] = await sql(db, "select id from held_payments where provider_ref='RCPT0011A'");
     const tb = await tenancy(w.lb, w.hB).catch(() => null);
     await rejects(as(db, user(w.lb), "select resolve_held_payment($1,$2)", [held, w.tB]), /Held payment not found/);
-    const [{ id: ghost }] = await sql(db, "select id from held_payments where provider_ref='RCPT0010A'");
-    await rejects(as(db, user(w.la), "select resolve_held_payment($1,$2)", [ghost, t.id]), /Held payment not found/);   // cannot grab unknown-account money
     await rejects(as(db, user(w.la), "select resolve_held_payment($1,$2)", [held, w.tB]), /Tenancy not found/);
     const [{ resolve_held_payment: lid }] = await as(db, user(w.la), "select resolve_held_payment($1,$2)", [held, t.id]);
     assert.ok(lid);
     await rejects(as(db, user(w.la), "select resolve_held_payment($1,$2)", [held, t.id]), /Held payment not found/);
     void tb;
   });
-  it("payouts: each payment is paid out once, reversed payments are skipped, and direct landlords are never paid out", async () => {
-    const t1 = await tenancy(), t2 = await tenancy(), t3 = await tenancy();
-    const ids = [];
-    for (const [t, r] of [[t1, "RCPTP001"], [t2, "RCPTP002"], [t3, "RCPTP003"]]) ids.push(await confirm(await checkoutOf(await attempt(t.id)), r, 6500));
-    await as(db, user(w.la), "select reverse_payment($1,'wrong tenant')", [ids[2]]);
-    await rejects(as(db, server, "select create_payout($1)", [w.la]), /No verified payout destination/);
-
-    await as(db, user(w.la), "insert into payout_destinations(landlord_id,kind,destination) values ($1,'mpesa_phone','0712345678')", [w.la]);
-    assert.equal((await sql(db, "select verified from payout_destinations where landlord_id=$1", [w.la]))[0].verified, false);
-    await rejects(as(db, user(w.la), "update payout_destinations set verified=true"), /permission denied/);
-    await sql(db, "update payout_destinations set verified=true where landlord_id=$1", [w.la]);                 // the server verifies it
-    await as(db, user(w.la), "update payout_destinations set destination='0799999999' where landlord_id=$1", [w.la]);
-    assert.equal((await sql(db, "select verified from payout_destinations where landlord_id=$1", [w.la]))[0].verified, false);   // changing it resets verification
-    await sql(db, "update payout_destinations set verified=true where landlord_id=$1", [w.la]);
-
-    const before = (await sql(db, "select coalesce(sum(amount),0)::int s from ledger_entries l where landlord_id=$1 and kind='rent_payment' and not exists (select 1 from ledger_entries r where r.reverses_id=l.id)", [w.la]))[0].s;
-    const [{ create_payout: pid }] = await as(db, server, "select create_payout($1)", [w.la]);
-    assert.ok(pid);
-    assert.equal((await sql(db, "select amount from payouts where id=$1", [pid]))[0].amount, before);
-    assert.equal((await as(db, server, "select create_payout($1) p", [w.la]))[0].p, null);                       // nothing left to pay
-    await rejects(sql(db, "insert into payout_items(payout_id,ledger_entry_id) values ($1,$2)", [pid, ids[0]]), /duplicate key/);
-    await rejects(sql(db, "delete from payout_items"), /append-only/);
-    await rejects(sql(db, "update payout_items set payout_id=payout_id"), /append-only/);
-    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill' where landlord_id=$1", [w.la]);
+  it("directly settled rent is never put into NyumbaPlug's payout queue", async () => {
+    const t1 = await tenancy(), t2 = await tenancy();
+    await confirm(await checkoutOf(await attempt(t1.id)), "RCPTP001", 6500);
+    await confirm(await checkoutOf(await attempt(t2.id)), "RCPTP002", 6500);
     await rejects(as(db, server, "select create_payout($1)", [w.la]), /paid directly/);
-    await sql(db, "update payment_accounts set mode='platform' where landlord_id=$1", [w.la]);
+    assert.equal((await sql(db, "select count(*)::int n from payouts where landlord_id=$1", [w.la]))[0].n, 0);
+    assert.equal((await sql(db, "select count(*)::int n from payout_items i join payouts p on p.id=i.payout_id where p.landlord_id=$1", [w.la]))[0].n, 0);
   });
   it("monthly charges are created once per tenancy, never for ended tenancies or suspended landlords", async () => {
     const gen = async (y, m) => (await as(db, server, "select generate_charges($1,$2) n", [y, m]))[0].n;
@@ -189,11 +168,22 @@ describe("money", () => {
     await rejects(as(db, anon, "select generate_charges(2026,11)"), /permission denied/);
   });
   it("a landlord can switch to their own Paybill only after it has been connected and verified", async () => {
+    await sql(db, "update payment_accounts set mode='platform', status='not_connected', shortcode=null, credentials_ciphertext=null where landlord_id=$1", [w.la]);
     await rejects(as(db, user(w.la), "select set_payment_mode('own')"), /Connect and verify/);
-    await sql(db, "update payment_accounts set status='connected', shortcode='123456', shortcode_kind='paybill' where landlord_id=$1", [w.la]);
+    await sql(db, "update payment_accounts set status='connected', shortcode='123456', shortcode_kind='paybill', credentials_ciphertext='\\x01'::bytea where landlord_id=$1", [w.la]);
+    await rejects(as(db, user(w.la), "select set_payment_mode('own')"), /pending M-Pesa rent prompts/);
+    await sql(db, "update payment_attempts set status='failed' where landlord_id=$1 and status='pending'", [w.la]);
     await as(db, user(w.la), "select set_payment_mode('own')");
     assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "own");
-    await as(db, user(w.la), "select set_payment_mode('platform')");
+    await rejects(as(db, user(w.la), "select set_payment_mode('platform')"), /Choose Daraja or manual bank transfer/);
+  });
+  it("tenant route is unavailable until the landlord has a verified own Paybill", async () => {
+    const t = await tenancy();
+    await sql(db, "update tenancies set tenant_user_id=$1 where id=$2", [w.ta, t.id]);
+    await sql(db, "update payment_accounts set mode='platform' where landlord_id=$1", [w.la]);
+    assert.equal((await as(db, user(w.ta), "select tenant_payment_route() route"))[0].route, null);
+    await sql(db, "update payment_accounts set mode='own', status='connected', shortcode='123456', shortcode_kind='paybill', credentials_ciphertext='\\x01'::bytea where landlord_id=$1", [w.la]);
+    assert.equal((await as(db, user(w.ta), "select tenant_payment_route() route"))[0].route, "own");
   });
   it("removed checkout routes cannot be selected and their credential columns are gone", async () => {
     await rejects(as(db, user(w.la), "select set_payment_mode('paystack')"), /invalid input value for enum/);
@@ -205,14 +195,12 @@ describe("money", () => {
     assert.deepEqual(await sql(db, `select column_name from information_schema.columns
       where table_schema='public' and table_name='payment_attempts' and column_name='provider'`), []);
   });
-  it("records a bank-Paybill STK confirmation with its distinct ledger method", async () => {
+  it("refuses to credit a legacy bank-Paybill rent attempt", async () => {
     const t = await tenancy();
     const a = await attempt(t.id);
     await as(db, server, "update payment_attempts set bank_paybill_shortcode='523456' where id=$1", [a]);
-    const id = await confirm(await checkoutOf(a), "BANKRCPT001", 6500);
-    assert.ok(id);
-    assert.deepEqual((await sql(db, "select method, provider_ref from ledger_entries where attempt_id=$1", [a]))[0],
-      { method: "bank_paybill", provider_ref: "BANKRCPT001" });
+    await rejects(confirm(await checkoutOf(a), "BANKRCPT001", 6500), /verified landlord-owned account/);
+    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where attempt_id=$1", [a]))[0].n, 0);
   });
   it("bank accounts require landlord confirmation, reset on bank changes, and stay RLS protected", async () => {
     const bank1 = (await sql(db, "insert into banks(name,paybill) values('Test Bank','523456') returning id"))[0].id;
@@ -233,13 +221,13 @@ describe("money", () => {
     assert.deepEqual(await as(db, user(w.lb), "select id from bank_test_payments"), []);
     await rejects(as(db, user(w.la), "update bank_test_payments set mpesa_receipt='LANDLORD1'"), /permission denied/);
     await as(db, user(w.la), "select confirm_landlord_bank_account_test()");
-    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
-    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "bank_paybill");
+    await rejects(as(db, user(w.la), "select set_payment_mode('bank_paybill')"), /account holder name/);
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "own");
 
     await sql(db, "update banks set paybill='523457' where id=$1", [bank1]);
     const [reset] = await as(db, user(w.la), "select account_number, verified from landlord_bank_accounts");
     assert.deepEqual(reset, { account_number: "1234567890123456789012345678901234567890", verified: false });
-    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "platform");
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "own");
     await rejects(as(db, user(w.la), "select * from pending_stk_attempts()"), /permission denied/);
     await rejects(as(db, anon, "select * from pending_stk_attempts()"), /permission denied/);
   });
@@ -265,18 +253,80 @@ describe("money", () => {
     await as(db, server, "select bind_bank_test_payment($1,'bank_CO_2')", [test.id]);
     await as(db, server, "select complete_bank_test_payment('bank_CO_2','BANKRCPT003',10,'254712345678')");
     await as(db, user(w.la), "select confirm_landlord_bank_account_test()");
-    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
+    await rejects(as(db, user(w.la), "select set_payment_mode('bank_paybill')"), /account holder name/);
 
     await rejects(as(db, user(w.lb), "select remove_landlord_bank_account()"), /No saved bank account/);
     await as(db, user(w.la), "select remove_landlord_bank_account()");
     assert.deepEqual((await as(db, user(w.la), "select bank_id, account_number, verified, test_payment_receipt from landlord_bank_accounts"))[0],
       { bank_id: bank, account_number: null, verified: false, test_payment_receipt: null });
-    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "platform");
+    assert.equal((await as(db, user(w.la), "select mode from payment_accounts"))[0].mode, "own");
     assert.deepEqual((await as(db, user(w.la), "select status, mpesa_receipt from bank_test_payments"))[0],
       { status: "succeeded", mpesa_receipt: "BANKRCPT003" });
 
     await as(db, user(w.la), "select save_landlord_bank_account($1,'999888777')", [bank]);
     assert.deepEqual((await as(db, user(w.la), "select account_number, verified from landlord_bank_accounts"))[0],
       { account_number: "999888777", verified: false });
+  });
+  it("manual bank claims are landlord-reviewed and create one rent entry only after confirmation", async () => {
+    await sql(db, "update payment_attempts set status='failed' where status='pending'");
+    const t = await tenancy();
+    const tenantId = await mkUser(db, "manual-claim@x.ke", { app: { invited_role: "tenant" } });
+    await sql(db, "update tenancies set tenant_user_id=$1 where id=$2", [tenantId, t.id]);
+    const bank = (await sql(db, "select id from banks where name='Replacement Bank'"))[0].id;
+    await as(db, user(w.la), "select save_landlord_manual_bank_account($1,'123456789','Wanjiku A')", [bank]);
+    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
+    assert.equal((await as(db, user(tenantId), "select tenant_payment_route() mode"))[0].mode, "bank_paybill");
+    assert.deepEqual((await as(db, user(tenantId), "select * from tenant_manual_bank_details()"))[0],
+      { bank_name: "Replacement Bank", account_number: "123456789", account_name: "Wanjiku A" });
+    assert.deepEqual(await as(db, user(w.tb), "select * from tenant_manual_bank_details()"), []);
+
+    await rejects(as(db, user(tenantId), "select submit_manual_rent_payment(5000,'Bank transfer confirmation')"), /full outstanding balance/);
+    await rejects(as(db, user(tenantId), "select submit_manual_rent_payment(6500,'too short')"), /Paste the bank transfer confirmation/);
+    const [submitted] = await as(db, user(tenantId),
+      "select submit_manual_rent_payment(6500,'Bank transfer confirmation message from the bank') id");
+    assert.ok(submitted.id);
+    assert.equal(await balance(t.id), 6500);
+    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 0);
+    await rejects(as(db, user(tenantId),
+      "select submit_manual_rent_payment(6500,'Another bank transfer confirmation message')"), /previous transfer is still waiting/);
+    await rejects(as(db, user(w.la), "select set_payment_mode('own')"), /pending manual payment claims/);
+    await rejects(as(db, user(w.la),
+      "select save_landlord_manual_bank_account($1,'999999999','Different Holder')", [bank]), /pending manual payment claims/);
+    await rejects(as(db, user(w.lb), "select review_manual_rent_payment($1,true)", [submitted.id]), /Payment claim not found/);
+    await rejects(as(db, user(w.ta),
+      "insert into manual_rent_payment_claims(tenancy_id,landlord_id,amount,transaction_message) values ($1,$2,6500,'Forged bank confirmation message')",
+      [t.id, w.la]), /permission denied/);
+    await rejects(as(db, user(w.la), "update manual_rent_payment_claims set status='received'"), /permission denied/);
+    assert.equal((await as(db, user(w.lb), "select id from manual_rent_payment_claims")).length, 0);
+
+    await as(db, user(w.la), "select review_manual_rent_payment($1,false)", [submitted.id]);
+    assert.equal((await sql(db, "select status from manual_rent_payment_claims where id=$1", [submitted.id]))[0].status, "rejected");
+    assert.equal(await balance(t.id), 6500);
+    const [retry] = await as(db, user(tenantId),
+      "select submit_manual_rent_payment(6500,'Bank transfer confirmation message from the bank') id");
+    await as(db, user(w.la), "select review_manual_rent_payment($1,true)", [retry.id]);
+    assert.equal((await sql(db, "select status from manual_rent_payment_claims where id=$1", [retry.id]))[0].status, "received");
+    assert.equal(await balance(t.id), 0);
+    assert.deepEqual((await sql(db, "select method, amount from ledger_entries where tenancy_id=$1", [t.id]))[0],
+      { method: "manual_transfer", amount: 6500 });
+    await rejects(as(db, user(w.la), "select review_manual_rent_payment($1,true)", [retry.id]), /already been reviewed/);
+    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 1);
+    await as(db, user(w.la), "select set_payment_mode('own')");
+  });
+  it("manual claims cannot be confirmed after the outstanding balance changes", async () => {
+    const t = await tenancy();
+    const tenantId = await mkUser(db, "manual-balance@x.ke", { app: { invited_role: "tenant" } });
+    await sql(db, "update tenancies set tenant_user_id=$1 where id=$2", [tenantId, t.id]);
+    const bank = (await sql(db, "select id from banks where name='Replacement Bank'"))[0].id;
+    await as(db, user(w.la), "select save_landlord_manual_bank_account($1,'123456789','Wanjiku A')", [bank]);
+    await as(db, user(w.la), "select set_payment_mode('bank_paybill')");
+    const [claim] = await as(db, user(tenantId),
+      "select submit_manual_rent_payment(6500,'Bank transfer confirmation message from the bank') id");
+    await sql(db, "insert into charges(tenancy_id,landlord_id,period_year,period_month,amount) values ($1,$2,2026,11,1000)", [t.id, w.la]);
+    await rejects(as(db, user(w.la), "select review_manual_rent_payment($1,true)", [claim.id]), /outstanding balance changed/);
+    assert.equal((await sql(db, "select status from manual_rent_payment_claims where id=$1", [claim.id]))[0].status, "pending");
+    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 0);
+    await as(db, user(w.la), "select review_manual_rent_payment($1,false)", [claim.id]);
+    await as(db, user(w.la), "select set_payment_mode('own')");
   });
 });

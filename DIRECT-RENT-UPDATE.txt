@@ -1,0 +1,11 @@
+NyumbaPlug direct-to-landlord rent update
+
+1. This source package excludes .git, node_modules, build output, and non-example .env files. Run npm ci before building.
+2. Apply Supabase migrations in order, including 0030_direct_landlord_rent_only.sql. Do not deploy the new web/Edge Function code before the migration is applied.
+3. Deploy the updated Edge Function daraja-stk and the other changed payment function source with your normal Supabase deployment process.
+4. Build and deploy the web app. Confirm the landlord connects a Daraja Paybill using credentials issued for that exact Paybill.
+5. Current supported rent method: one landlord-owned Daraja Paybill per landlord. Multiple simultaneous payment methods and KCB Buni / Equity Jenga / PesaLink adapters are NOT implemented. Do not advertise or activate them until provider direct-settlement support is confirmed and the adapters are built and tested.
+6. Platform Paybill remains for NyumbaPlug subscriptions and SMS-credit purchases only. Tenant rent fails closed if a landlord direct account is unavailable.
+7. Historical ledger and payout records remain for audit. Old pending platform/bank rent attempts are marked failed by migration 0030.
+
+Validation completed in this environment: web TypeScript typecheck passed; Supabase SQL migration chain loaded in PGlite; ledger test file passed 22/22; selected payment-credential/C2B tests passed. Full Vite build and Deno Edge Function tests were not run because the uploaded node_modules contained Windows-only native build/runtime binaries, not the Linux binaries required by this environment. Run npm ci, npm run build, and npm run test:functions on your deployment workstation/CI before production.

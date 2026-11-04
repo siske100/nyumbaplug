@@ -1,6 +1,6 @@
 import type { County, HouseType } from "@/data/counties";
 
-export type Role = "landlord" | "tenant" | "admin";
+export type Role = "landlord" | "tenant" | "admin" | "marketer" | "client";
 
 /** Landlord journey: each step unlocks the next. Decided by the server, only displayed here. */
 export type LandlordState =
@@ -16,6 +16,7 @@ export interface Session {
   phoneVerified?: boolean;
   landlordState?: LandlordState;   // landlords only
   landlordOnHold?: boolean;        // tenants: their landlord is expired or suspended
+  marketerActive?: boolean;        // marketers: activated by the server after the KES 699 payment
   mfa?: "ok" | "enroll" | "challenge";   // admins only: the authenticator code step
 }
 
@@ -36,7 +37,7 @@ export interface PublicListing {
 }
 
 export interface ListingFilters { county?: County; type?: HouseType }
-export type LandlordHouse = PublicListing;
+export interface LandlordHouse extends PublicListing { coverPhoto?: string }
 
 export interface LandlordSummary {
   rentToday: number;
@@ -69,7 +70,18 @@ export interface AdminKyc {
 export interface AdminPayment { id: string; landlordId: string; landlordName: string; amount: number; ref: string; paidAt: string; byAdmin: boolean }
 export interface AdminCelcom { toppedUp: number; used: number; balance: number; low: boolean; monthSegments: number; monthRevenue: number; monthCost: number; monthProfit: number }
 export interface AdminPayout { id: string; landlordName: string; amount: number; destinationKind: string; destination: string; accountRef: string | null; status: string; ref: string | null; at: string; paidAt: string | null }
+export interface AdminDashboardData {
+  totalProperties: number;
+  monthlyBookings: number;
+  totalRevenue: number;
+  activeMarketers: number;
+  trend: { month: string; bookings: number; revenue: number }[];
+  counties: { county: string; bookings: number; share: number }[];
+  topMarketers: { id: string; name: string; listings: number; bookings: number; earnings: number }[];
+}
 export interface AdminApi {
+  dashboard(): Promise<AdminDashboardData>;
+  bookingStatuses(): Promise<{ status: VisitStatus; count: number }[]>;
   landlords(): Promise<AdminLandlord[]>;
   kycQueue(): Promise<AdminKyc[]>;
   kycFileUrl(path: string): Promise<string>;
@@ -82,6 +94,8 @@ export interface AdminApi {
   celcomTopup(amount: number, ref: string): Promise<void>;
   payouts(): Promise<AdminPayout[]>;
   markPayoutPaid(id: string, ref: string): Promise<void>;
+  marketplaceSettlements(): Promise<MarketplaceSettlement[]>;
+  settleMarketplaceBooking(id: string, action: "pay_marketer" | "refund_client", ref: string): Promise<void>;
 }
 
 /** Everything the screens can ask of the server. The mock and the real Supabase version both fit this. */
@@ -90,6 +104,7 @@ export interface Api {
   signInWithPassword(email: string, password: string): Promise<Session>;
   signInWithGoogle(): Promise<void>;
   signUpLandlord(input: SignUpInput): Promise<void>;
+  signUpMarketplace(input: SignUpInput, role: "marketer" | "client"): Promise<void>;
   verifyEmailCode(email: string, code: string): Promise<Session | null>;
   resendEmailCode(email: string): Promise<void>;
   syncEmailVerified(): Promise<void>;
@@ -102,6 +117,7 @@ export interface Api {
   mfaBegin(): Promise<MfaChallenge>;
   mfaVerify(factorId: string, code: string): Promise<void>;
   admin: AdminApi;
+  marketplace: MarketplaceApi;
   devSignIn?(role: Role): Promise<Session>;
   listListings(filters: ListingFilters): Promise<PublicListing[]>;
   landlord: LandlordApi;
@@ -125,18 +141,22 @@ export interface TenancyPatch { agreementSignedOn?: string | null; electricityEn
 export interface InviteResult { link: string; smsSent: boolean; expiresAt: string }
 export interface VisitItem {
   id: string; visitorName: string; visitorPhone: string; houseTitle: string; preferredDate: string; timeWindow: string;
-  scheduledDate: string | null; scheduledWindow: string | null; status: VisitStatus; reschedules: number;
+  scheduledDate: string | null; scheduledWindow: string | null; status: VisitStatus; reschedules: number; createdAt: string;
 }
 export interface VisitPatch { status?: VisitStatus; scheduledDate?: string; scheduledWindow?: string }
-export interface LedgerRow { id: string; tenancyId: string; tenantName: string; unit: string; kind: "rent_payment" | "deposit_payment" | "reversal"; amount: number; method: string; ref: string; receipt: string; at: string; reversed: boolean }
+export interface LedgerRow { id: string; tenancyId: string; tenantName: string; unit: string; kind: "rent_payment" | "deposit_payment" | "reversal"; bucket: "rent" | "deposit"; amount: number; method: string; ref: string; receipt: string; at: string; reversed: boolean }
 export interface HeldPayment { id: string; amount: number; billRef: string | null; reason: string; at: string; ref: string }
 export interface PayoutRow { id: string; amount: number; status: string; destination: string; at: string; paidAt: string | null; ref: string | null }
-export interface PaymentsOverview { ledger: LedgerRow[]; held: HeldPayment[]; payouts: PayoutRow[]; destination: { kind: "mpesa_phone" | "bank_paybill"; destination: string; accountRef: string | null; verified: boolean } | null; mode: PaymentMode; owed: number }
+export interface ManualRentPaymentClaim {
+  id: string; tenancyId: string; tenantName: string; unit: string; amount: number; transactionMessage: string;
+  status: "pending" | "received" | "rejected"; submittedAt: string;
+}
+export interface PaymentsOverview { ledger: LedgerRow[]; held: HeldPayment[]; payouts: PayoutRow[]; manualClaims: ManualRentPaymentClaim[]; destination: { kind: "mpesa_phone" | "bank_paybill"; destination: string; accountRef: string | null; verified: boolean } | null; mode: PaymentMode; owed: number }
 export interface PaymentAccount {
   mode: PaymentMode; shortcode: string | null; status: "not_connected" | "verifying" | "connected" | "failed"; failureReason: string | null;
 }
 export interface BankOption { id: number; name: string; paybill: string }
-export interface LandlordBankAccount { bankId: number; accountNumber: string | null; verified: boolean; testPaymentReceipt: string | null; verifiedAt: string | null }
+export interface LandlordBankAccount { bankId: number; accountNumber: string | null; accountName: string | null; verified: boolean; testPaymentReceipt: string | null; verifiedAt: string | null }
 export interface BankTestPayment {
   status: "pending" | "succeeded" | "failed"; mpesaReceipt: string | null; bankId: number;
   accountNumber: string; paybill: string; failureReason: string | null; createdAt: string;
@@ -164,6 +184,7 @@ export interface LandlordApi {
   houseForEdit(houseId: string): Promise<HouseForEdit>;
   updateHouse(houseId: string, input: HouseInput, photos: File[]): Promise<void>;
   visits(): Promise<VisitItem[]>;
+  dashboardLedger(): Promise<LedgerRow[]>;
   updateVisit(visitId: string, patch: VisitPatch): Promise<void>;
   reschedule(visitId: string, date: string, window: string): Promise<void>;
   tenants(): Promise<TenancyRow[]>;
@@ -174,11 +195,13 @@ export interface LandlordApi {
   fileUrl(bucket: "agreements", path: string): Promise<string>;
   inviteTenant(tenancyId: string): Promise<InviteResult>;
   payments(): Promise<PaymentsOverview>;
+  reviewManualRentPayment(claimId: string, received: boolean): Promise<void>;
   resolveHeld(heldId: string, tenancyId: string): Promise<void>;
   reversePayment(entryId: string, reason: string): Promise<void>;
   savePayoutDestination(kind: "mpesa_phone" | "bank_paybill", destination: string, accountRef: string | null): Promise<void>;
   paymentAccount(): Promise<PaymentAccount>;
   bankPaymentSetup(): Promise<BankPaymentSetup>;
+  saveManualBankAccount(bankId: number, accountNumber: string, accountName: string): Promise<void>;
   saveBankPaymentAccount(bankId: number, accountNumber: string | null): Promise<"saved" | "reenter_account_number">;
   removeBankPaymentAccount(): Promise<void>;
   startBankPaymentTest(): Promise<{ message: string; amount: number }>;
@@ -200,7 +223,9 @@ export interface LandlordApi {
 export interface TenantHome {
   tenancy: { id: string; houseTitle: string; unit: string; rent: number; dueDay: number; code: string; agreementPath: string | null; agreementSignedOn: string | null;
              electricityEnabled: boolean; kplcPaybill: string | null; meterNumber: string | null; emergencyName: string; emergencyPhone: string; emergencyRelationship: string };
-  paymentMode: PaymentMode;
+  paymentMode: PaymentMode | "unavailable";
+  manualBank: { bankName: string; accountNumber: string; accountName: string } | null;
+  manualClaims: { id: string; amount: number; transactionMessage: string; status: "pending" | "received" | "rejected"; submittedAt: string }[];
   balance: number; charged: number; paid: number;
   history: { id: string; amount: number; kind: string; receipt: string; at: string }[];
   lastAttempt: { id: string; status: string; at: string } | null;
@@ -208,6 +233,7 @@ export interface TenantHome {
 export interface TenantApi {
   home(): Promise<TenantHome | null>;
   pay(): Promise<{ message: string; amount: number }>;
+  submitManualRentPayment(amount: number, transactionMessage: string): Promise<void>;
   complaints(): Promise<ComplaintItem[]>;
   newComplaint(tenancyId: string, category: string, title: string, body: string): Promise<void>;
   replyComplaint(id: string, body: string): Promise<void>;
@@ -224,4 +250,41 @@ export interface SiteApi {
   requestVisit(input: VisitRequestInput): Promise<void>;
   inviteInfo(token: string): Promise<InviteInfo>;
   acceptInvite(token: string, email: string, password: string): Promise<void>;
+}
+
+export interface MarketplaceListing {
+  id: string; title: string; description: string; county: string; town: string;
+  type: HouseType; rent: number; viewingFee: number; marketerName: string;
+}
+export interface MarketplaceListingInput {
+  id: string | null; title: string; description: string; countyId: number; townId: number;
+  type: HouseType; rent: number; viewingFee: number; active: boolean;
+}
+export interface MarketplaceBooking {
+  id: string; listingId: string; listingTitle: string; county: string; town: string; marketerName: string;
+  clientName: string; phone: string; date: string; timeWindow: string; amount: number;
+  status: "awaiting_payment" | "paid" | "viewed" | "refunded" | "paid_out";
+  paymentStatus?: string; paymentReceipt: string | null; submittedAt: string;
+}
+export interface MarketplaceMarketerDashboard {
+  active: boolean; activatedAt: string | null; activationStatus: string | null;
+  listings: MarketplaceListingInput[]; bookings: MarketplaceBooking[];
+}
+export interface MarketplaceSettlement {
+  id: string; date: string; timeWindow: string; amount: number; status: "paid" | "viewed";
+  bookingPhone: string; clientName: string; marketerName: string; marketerPhone: string;
+  marketerAmount: number; platformFee: number;
+}
+export interface MarketplaceApi {
+  publicListings(county?: string): Promise<MarketplaceListing[]>;
+  publicListing(id: string): Promise<MarketplaceListing | null>;
+  marketerDashboard(): Promise<MarketplaceMarketerDashboard>;
+  saveListing(input: MarketplaceListingInput): Promise<void>;
+  payActivation(): Promise<{ message: string; amount: number }>;
+  clientBookings(): Promise<MarketplaceBooking[]>;
+  createBooking(listingId: string, date: string, timeWindow: string): Promise<string>;
+  payViewingFee(bookingId: string, amount: number): Promise<{ message: string; amount: number }>;
+  confirmViewing(bookingId: string): Promise<void>;
+  settlements(): Promise<MarketplaceSettlement[]>;
+  settleBooking(bookingId: string, action: "pay_marketer" | "refund_client", reference: string): Promise<void>;
 }

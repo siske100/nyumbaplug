@@ -130,8 +130,11 @@ describe("function privileges (a guard for every future migration)", () => {
   });
   it("a signed-in user can run only the reviewed list. Any new function must be added here on purpose", async () => {
     assert.deepEqual(await callable("authenticated"), [
-      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_suspend_landlord", "agreement_visible_to_me", "confirm_landlord_bank_account_test", "is_admin", "landlord_active", "price_for_units",
-      "remove_landlord_bank_account", "resolve_held_payment", "reschedule_visit", "reverse_payment", "review_kyc", "save_landlord_bank_account", "set_my_phone", "set_payment_mode", "submit_kyc", "tenant_payment_route", "update_my_emergency_contact",
+      "admin_celcom_topup", "admin_mark_payout_paid", "admin_resume_landlord", "admin_settle_marketplace_booking", "admin_suspend_landlord", "agreement_visible_to_me",
+      "confirm_landlord_bank_account_test", "confirm_marketplace_viewing", "create_marketplace_booking", "is_admin", "landlord_active", "marketplace_marketer_active", "price_for_units",
+      "remove_landlord_bank_account", "resolve_held_payment", "reschedule_visit", "reverse_payment", "review_kyc", "review_manual_rent_payment",
+      "save_landlord_bank_account", "save_landlord_manual_bank_account", "save_marketplace_listing", "set_my_phone", "set_payment_mode",
+      "submit_kyc", "submit_manual_rent_payment", "tenant_manual_bank_details", "tenant_payment_route", "update_my_emergency_contact",
     ].sort());
   });
   it("functions that bypass row-level security cannot be used to peek at other people's data", async () => {

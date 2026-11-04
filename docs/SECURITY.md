@@ -20,9 +20,9 @@
 - The ledger, charges, audit log, subscription payments, payout items and the Celcom ledger cannot be edited, deleted or emptied by anyone, including the database owner.
 - One M-Pesa receipt is counted once; one payment attempt is credited once. Full amount only. Wrong amounts are held, not credited.
 - A callback is believed only if its secret address matches, it matches a prompt we sent, and Safaricom confirms it when we ask directly.
-- Rent paid to the wrong Paybill is refused or held: a landlord on the platform Paybill is never paid into someone's own Paybill, and the reverse.
+- New tenant rent is accepted only through a connected landlord-owned Daraja account. Platform Paybill C2B is rejected; a failed landlord connection never falls back to platform collection. Bank-Paybill rent attempts are disabled and legacy pending attempts are failed at cutover.
 - Landlord Daraja keys are tested with Safaricom, then stored encrypted (AES-256-GCM, bound to that landlord). No browser can read them, and the callback secret is never shown.
-- Bank account details and test-payment records are protected by landlord-scoped row-level security. The bank Paybill route can be enabled only after a KES 10 test payment is confirmed by Safaricom's callback and STK query, followed by the landlord's confirmation that the funds reached the bank account. Landlords cannot submit or write a receipt number as proof; only the server records the callback receipt and sets the verified flag.
+- Historical bank account details and test-payment records remain protected by landlord-scoped row-level security. Bank-Paybill rent collection is not enabled in the direct-settlement release.
 - A payout can be created once per ledger entry and cannot include reversed payments.
 - At zero SMS balance a message fails and nothing is charged; a rejected message is refunded once.
 

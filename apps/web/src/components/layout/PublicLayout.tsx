@@ -1,4 +1,3 @@
-import { Home } from "lucide-react";
 import { Link, Outlet } from "react-router-dom";
 import { Ambient } from "./Ambient";
 
@@ -9,25 +8,20 @@ export function PublicLayout() {
       <header className="sticky top-0 z-20 px-3 pt-3 sm:px-6">
         <div className="glass mx-auto flex w-full items-center justify-between rounded-2xl px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-lg bg-ember-500 text-graphite-950"><Home className="size-4.5" aria-hidden /></span>
-            <span className="font-display text-lg">Rental Houses Kenya</span>
+            <img src="/houseplug-kenya-wordmark.png" alt="HousePlug Kenya — Find, Book, Manage" className="h-auto w-32 rounded-md bg-white sm:w-40" />
           </Link>
           <div className="flex items-center gap-1">
-            <Link to="/sign-up" className="rounded-[10px] px-3 py-2 text-sm text-graphite-200 hover:bg-white/8 hover:text-bone">For landlords</Link>
             <Link to="/sign-in" className="rounded-[10px] bg-white/8 px-3 py-2 text-sm text-bone hover:bg-white/12">Sign in</Link>
           </div>
         </div>
       </header>
       <main className="mx-auto w-full px-3 pb-16 pt-6 sm:px-6"><Outlet /></main>
-      <footer className="mx-auto grid w-full gap-8 px-3 pb-8 text-sm text-graphite-400 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+      <footer className="mx-auto grid w-full gap-8 px-3 pb-8 text-sm text-graphite-400 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
         <div className="grid content-start gap-3">
-          <span className="font-medium text-bone">Rental Houses Kenya</span>
+          <span className="font-medium text-bone">HousePlug Kenya</span>
           <Link to="/about#about-rental-houses" className="w-fit hover:text-bone">About the service</Link>
           <Link to="/about#why-we-ask" className="w-fit hover:text-bone">Why we ask for information</Link>
         </div>
-        <nav aria-label="For house hunters" className="grid content-start gap-3">
-          <Link to="/about#for-house-hunters" className="w-fit font-medium text-bone hover:text-ember-300">For house hunters</Link>
-        </nav>
         <nav aria-label="For landlords" className="grid content-start gap-3">
           <Link to="/about#for-landlords" className="w-fit font-medium text-bone hover:text-ember-300">For landlords</Link>
           <Link to="/sign-up" className="w-fit hover:text-bone">Create a landlord account</Link>

@@ -1,7 +1,10 @@
 import nodeAssert from "node:assert/strict";
 
 // jsr.io is not reachable from every network, so the tests use Node's own assertions.
-const assert = (cond: unknown, msg?: string) => nodeAssert.ok(cond, msg);
+const assert = (cond: unknown, msg?: string) => {
+  if (msg === undefined) nodeAssert.ok(cond);
+  else nodeAssert.ok(cond, msg);
+};
 const assertEquals = (a: unknown, b: unknown) => nodeAssert.deepStrictEqual(a, b);
 async function assertRejects(fn: () => Promise<unknown>, cls: new (...a: never[]) => Error): Promise<Error> {
   try { await fn(); } catch (e) { nodeAssert.ok(e instanceof cls, `expected ${cls.name}, got ${String(e)}`); return e as Error; }
