@@ -4,12 +4,14 @@ import { api } from "@/api";
 import { DashboardTrend } from "@/components/ui/DashboardTrend";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
+import { SupportForm } from "@/components/shared/SupportForm";
 import { useAdminCelcom, useAdminKyc, useAdminLandlords, useAdminPayments } from "@/features/admin/hooks";
 import { useLive } from "@/features/live";
 import { fmtDate, formatKes } from "@/lib/format";
 
 export default function AdminOverview() {
   const dashboard = useLive("admin", "dashboard-analytics", () => api.admin.dashboard());
+  const support = useLive("admin", "support-preview", () => api.admin.supportRequests());
   const landlords = useAdminLandlords(), kyc = useAdminKyc(), payments = useAdminPayments(), celcom = useAdminCelcom();
   const summary = dashboard.data;
   const suspended = (landlords.data ?? []).filter((l) => l.state === "suspended").length;
@@ -31,7 +33,7 @@ export default function AdminOverview() {
 
   return (
     <div className="grid gap-4">
-      <ErrorNote error={dashboard.error ?? landlords.error ?? payments.error ?? celcom.error} />
+      <ErrorNote error={dashboard.error ?? landlords.error ?? payments.error ?? celcom.error ?? support.error} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map(({ label, value, note, icon: Icon, color }, index) => (
@@ -112,11 +114,28 @@ export default function AdminOverview() {
         </Panel>
       </div>
 
+      <Panel className="grid gap-4 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">User help requests</p><h2 className="mt-1 text-lg font-bold text-bone">Recent support issues</h2></div>
+          <Link to="/admin/support" className="text-sm font-bold text-blue-700 hover:underline">Open support inbox <ArrowRight className="inline size-4" aria-hidden /></Link>
+        </div>
+        {support.data?.filter((request) => request.status === "open").slice(0, 5).map((request) => (
+          <div key={request.id} className="grid gap-1 border-t border-slate-100 pt-3">
+            <p className="text-sm font-semibold text-slate-800">{request.name} <span className="font-normal text-slate-500">· {request.role} · {fmtDate(request.createdAt)}</span></p>
+            <p className="whitespace-pre-wrap break-words text-sm text-slate-600">{request.message}</p>
+          </div>
+        ))}
+        {support.data?.filter((request) => request.status === "open").length === 0 && <p className="text-sm text-slate-500">No open support issues.</p>}
+        <div className="border-t border-slate-100 pt-4">
+          <h3 className="mb-3 text-sm font-bold text-slate-800">Submit an issue</h3>
+          <SupportForm scope="admin" />
+        </div>
+      </Panel>
+
       <Panel id="settings" className="grid scroll-mt-24 gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
-        <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Settings & support</p><h2 className="mt-1 text-lg font-bold text-bone">Platform help</h2><p id="support" className="mt-1 text-sm text-slate-500">Need help? Contact support by WhatsApp or phone at 0799326074.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Platform</p><h2 className="mt-1 text-lg font-bold text-bone">Settings</h2><p className="mt-1 text-sm text-slate-500">Manage platform settings.</p></div>
         <div className="flex flex-wrap gap-2">
           <Link to="/admin/celcom" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Settings</Link>
-          <a href="https://wa.me/254799326074" target="_blank" rel="noreferrer" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Get Support</a>
         </div>
       </Panel>
     </div>

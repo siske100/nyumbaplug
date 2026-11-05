@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, dbError } from "./helpers";
-import type { AdminApi, AdminDashboardData, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState, MarketplaceSettlement, VisitStatus } from "./types";
+import type { AdminApi, AdminDashboardData, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState, MarketplaceSettlement, SupportRequest, VisitStatus } from "./types";
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => Number(v ?? 0);
@@ -143,6 +143,19 @@ export const adminApi: AdminApi = {
     const { error } = await supabase.rpc("admin_settle_marketplace_booking", {
       p_booking: id, p_action: action, p_ref: ref,
     });
+    if (error) throw dbError(error);
+  },
+  async supportRequests() {
+    const { data, error } = await supabase.rpc("admin_support_requests");
+    if (error) throw dbError(error);
+    return ((data ?? []) as Row[]).map((r): SupportRequest => ({
+      id: r.id as string, userId: r.user_id as string, name: (r.full_name as string) ?? "Account",
+      email: (r.email as string) ?? "", role: r.role as SupportRequest["role"],
+      message: r.message as string, status: r.status as SupportRequest["status"], createdAt: r.created_at as string,
+    }));
+  },
+  async updateSupportRequest(id, status) {
+    const { error } = await supabase.rpc("admin_update_support_request", { p_request: id, p_status: status });
     if (error) throw dbError(error);
   },
 };

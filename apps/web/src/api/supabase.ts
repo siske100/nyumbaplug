@@ -2,7 +2,7 @@ import { validateKycFile } from "@rh/shared";
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { adminApi } from "./adminSupabase";
-import { callFunction, dbError, toListing } from "./helpers";
+import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import { landlordApi } from "./landlordSupabase";
 import { marketplaceApi } from "./marketplaceSupabase";
 import { tenantApi, siteApi } from "./tenantSupabase";
@@ -153,9 +153,37 @@ export const supabaseApi: Api = {
     let q = supabase.from("public_listings").select("*").order("rent_amount");
     if (filters.county) q = q.eq("county", filters.county);
     if (filters.type) q = q.eq("house_type", filters.type);
+    if (filters.maxRent) q = q.lte("rent_amount", filters.maxRent);
     const { data, error } = await q;
     if (error) throw dbError(error);
-    return (data ?? []).map(toListing);
+    const listings = data ?? [];
+    if (!listings.length) return [];
+    const { data: photos, error: photosError } = await supabase.from("public_listing_photos")
+      .select("house_id, storage_path").in("house_id", listings.map((row) => row.id)).order("position");
+    if (photosError) throw dbError(photosError);
+    const coverByHouse = new Map<string, string>();
+    for (const photo of photos ?? []) {
+      if (!coverByHouse.has(photo.house_id)) {
+        coverByHouse.set(photo.house_id, supabase.storage.from("house-photos").getPublicUrl(photo.storage_path).data.publicUrl);
+      }
+    }
+    return listings.map((row) => ({ ...toListing(row), coverPhoto: coverByHouse.get(row.id) }));
+  },
+
+  support: {
+    async submit(message) {
+      const { error } = await supabase.rpc("submit_support_request", { p_message: message.trim() });
+      if (error) throw dbError(error);
+    },
+    async mine() {
+      const userId = await currentUserId();
+      const { data, error } = await supabase.from("support_requests").select("id, message, status, created_at")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
+      if (error) throw dbError(error);
+      return (data ?? []).map((row) => ({
+        id: row.id, message: row.message, status: row.status as "open" | "resolved", createdAt: row.created_at,
+      }));
+    },
   },
 
   landlord: landlordApi,

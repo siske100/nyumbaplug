@@ -33,10 +33,11 @@ export interface PublicListing {
   total: number;
   amenities: string[];
   photoCount: number;
+  coverPhoto?: string;
   verifiedLandlord: boolean;
 }
 
-export interface ListingFilters { county?: County; type?: HouseType }
+export interface ListingFilters { county?: County; type?: HouseType; maxRent?: number }
 export interface LandlordHouse extends PublicListing { coverPhoto?: string }
 
 export interface LandlordSummary {
@@ -79,6 +80,16 @@ export interface AdminDashboardData {
   counties: { county: string; bookings: number; share: number }[];
   topMarketers: { id: string; name: string; listings: number; bookings: number; earnings: number }[];
 }
+export interface SupportRequest {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: Role;
+  message: string;
+  status: "open" | "resolved";
+  createdAt: string;
+}
 export interface AdminApi {
   dashboard(): Promise<AdminDashboardData>;
   bookingStatuses(): Promise<{ status: VisitStatus; count: number }[]>;
@@ -96,6 +107,8 @@ export interface AdminApi {
   markPayoutPaid(id: string, ref: string): Promise<void>;
   marketplaceSettlements(): Promise<MarketplaceSettlement[]>;
   settleMarketplaceBooking(id: string, action: "pay_marketer" | "refund_client", ref: string): Promise<void>;
+  supportRequests(): Promise<SupportRequest[]>;
+  updateSupportRequest(id: string, status: SupportRequest["status"]): Promise<void>;
 }
 
 /** Everything the screens can ask of the server. The mock and the real Supabase version both fit this. */
@@ -117,6 +130,10 @@ export interface Api {
   mfaBegin(): Promise<MfaChallenge>;
   mfaVerify(factorId: string, code: string): Promise<void>;
   admin: AdminApi;
+  support: {
+    submit(message: string): Promise<void>;
+    mine(): Promise<Pick<SupportRequest, "id" | "message" | "status" | "createdAt">[]>;
+  };
   marketplace: MarketplaceApi;
   devSignIn?(role: Role): Promise<Session>;
   listListings(filters: ListingFilters): Promise<PublicListing[]>;

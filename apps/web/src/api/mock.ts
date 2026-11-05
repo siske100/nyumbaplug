@@ -6,13 +6,14 @@
  */
 import { ApiError } from "@/lib/queryClient";
 import { vacantUnitsSchema } from "@/lib/validation";
-import type { Api, KycStatus, LandlordHouse, LandlordSummary, ListingFilters, PublicListing, Role, Session, TenantHome } from "./types";
+import type { Api, KycStatus, LandlordHouse, LandlordSummary, ListingFilters, PublicListing, Role, Session, SupportRequest, TenantHome } from "./types";
 
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 let currentUserId: string | null = null;
 let pendingEmail = "";
 let pendingRole: Role = "landlord";
 let kycAttempts = 0;
+const supportRequests: SupportRequest[] = [];
 
 const users: Record<string, Session> = {
   "u-landlord": { userId: "u-landlord", role: "landlord", name: "Wanjiku", landlordState: "active" },
@@ -158,6 +159,18 @@ export const mockApi: Api = {
         { status: "cancelled", count: 0 },
       ];
     },
+    async supportRequests() {
+      requireSession("admin");
+      await wait();
+      return [...supportRequests].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+    async updateSupportRequest(id: string, status: SupportRequest["status"]) {
+      requireSession("admin");
+      await wait();
+      const request = supportRequests.find((item) => item.id === id);
+      if (!request) throw new ApiError(404, "Support request not found");
+      request.status = status;
+    },
   }), {
     get(target, key, receiver) {
       if (Reflect.has(target, key)) return Reflect.get(target, key, receiver);
@@ -169,8 +182,26 @@ export const mockApi: Api = {
     await wait();
     return houses
       .filter((h) => h.vacant > 0) // full houses never appear in search
-      .filter((h) => (!filters.county || h.county === filters.county) && (!filters.type || h.type === filters.type))
-      .map(toPublic);
+      .filter((h) => (!filters.county || h.county === filters.county) && (!filters.type || h.type === filters.type) && (!filters.maxRent || h.rent <= filters.maxRent))
+      .map((h) => ({ ...toPublic(h), coverPhoto: "/apartment-building.jpg" }));
+  },
+
+  support: {
+    async submit(message: string) {
+      const session = requireSession();
+      await wait();
+      supportRequests.push({
+        id: crypto.randomUUID(), userId: session.userId, name: session.name, email: session.email ?? "",
+        role: session.role, message: message.trim(), status: "open", createdAt: new Date().toISOString(),
+      });
+    },
+    async mine() {
+      const session = requireSession();
+      await wait();
+      return supportRequests.filter((item) => item.userId === session.userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(({ id, message, status, createdAt }) => ({ id, message, status, createdAt }));
+    },
   },
 
   landlord: unavailable<Api["landlord"]>({

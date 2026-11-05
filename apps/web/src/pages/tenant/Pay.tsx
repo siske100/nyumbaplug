@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
+import { SupportForm } from "@/components/shared/SupportForm";
 import { useSession } from "@/features/auth/useSession";
 import { useLive, useLiveMutation } from "@/features/live";
 import { fmtDate, formatKes } from "@/lib/format";
@@ -182,6 +183,11 @@ export default function Pay() {
           {h.history.length === 0 && <li className="py-3 text-graphite-300">No payments yet.</li>}
           {h.history.map((p) => <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><p>{fmtDate(p.at)}</p><p className="text-sm text-graphite-400">Receipt {p.receipt}</p></div><div className="flex items-center gap-2">{p.kind === "reversal" && <Chip tone="danger">Reversed</Chip>}<span>{formatKes(p.amount)}</span></div></li>)}
         </ul>
+      </Panel>
+
+      <Panel className="grid gap-3 p-5 sm:p-6">
+        <div><h2 className="text-xl font-bold text-slate-900">Help & support</h2><p className="mt-1 text-sm text-slate-600">Paste your issue here and the admin team will review it.</p></div>
+        <SupportForm scope="tenant" />
       </Panel>
     </div>
   );

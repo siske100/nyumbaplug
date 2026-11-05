@@ -16,6 +16,7 @@ import Terms from "@/pages/Terms";
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const House = lazy(() => import("@/pages/House"));
 const About = lazy(() => import("@/pages/About"));
+const Support = lazy(() => import("@/pages/Support"));
 const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
 const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
@@ -27,7 +28,7 @@ const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy
 const A = {
   Layout: lazy(() => import("@/pages/admin/AdminLayout")), Overview: lazy(() => import("@/pages/admin/Overview")), Documents: lazy(() => import("@/pages/admin/Documents")),
   Bookings: lazy(() => import("@/pages/admin/Bookings")), Subscriptions: lazy(() => import("@/pages/admin/Subscriptions")), Payments: lazy(() => import("@/pages/admin/Payments")),
-  Payouts: lazy(() => import("@/pages/admin/Payouts")), Celcom: lazy(() => import("@/pages/admin/Celcom")),
+  Payouts: lazy(() => import("@/pages/admin/Payouts")), Celcom: lazy(() => import("@/pages/admin/Celcom")), Support: lazy(() => import("@/pages/admin/Support")),
 };
 
 const Missing = () => <><Ambient /><Notice icon="missing" title="Page not found" body="The page you are looking for does not exist." action={{ to: "/", label: "Back to houses" }} /></>;
@@ -61,12 +62,14 @@ export default function App() {
           <Route path="complaints" element={<ComplaintsView role="landlord" />} />
           <Route path="notices" element={<NoticesView role="landlord" />} />
           <Route path="more" element={<L.More />} />
+          <Route path="support" element={<Support />} />
         </Route>
         <Route path="/tenant" element={<RequireRole role="tenant"><T.Layout /></RequireRole>}>
           <Route index element={<T.Pay />} />
           <Route path="complaints" element={<ComplaintsView role="tenant" />} />
           <Route path="documents" element={<T.Documents />} />
           <Route path="notices" element={<NoticesView role="tenant" />} />
+          <Route path="support" element={<Support />} />
         </Route>
         <Route path="/marketer/*" element={<Navigate to="/" replace />} />
         <Route path="/client/*" element={<Navigate to="/" replace />} />
@@ -79,6 +82,7 @@ export default function App() {
           <Route path="payments" element={<A.Payments />} />
           <Route path="payouts" element={<A.Payouts />} />
           <Route path="celcom" element={<A.Celcom />} />
+          <Route path="support" element={<A.Support />} />
         </Route>
 
         <Route path="/forbidden" element={<><Ambient /><Notice icon="forbidden" title="You do not have access" body="This page belongs to a different kind of account." action={{ to: "/", label: "Back to houses" }} /></>} />
