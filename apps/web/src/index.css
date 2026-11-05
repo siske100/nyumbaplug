@@ -60,6 +60,9 @@
   [class~="text-[10px]"] { font-size: 9px !important; }
 }
 
+.hide-scrollbar { scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
 /* One ambient light source (ember) and one cool grey, fixed behind everything.
    The glass panels only read as glass because there is light to refract. */
 .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--color-graphite-950); }
