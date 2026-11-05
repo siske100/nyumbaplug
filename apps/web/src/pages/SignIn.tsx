@@ -47,7 +47,7 @@ export default function SignIn() {
   const failure = [passwordLogin.error, google.error, dev.error, sessionError].find(Boolean);
 
   return (
-    <div className="grid min-h-[100dvh] place-items-center px-4 py-10">
+    <div className="public-page public-page-auth grid min-h-[100dvh] place-items-center px-4 py-10">
       <div className="ambient" aria-hidden />
       <Panel tone="hero" className="w-full max-w-md p-7 sm:p-9">
         <h1 className="text-3xl">Sign in</h1>

@@ -333,3 +333,69 @@ html[data-perf="rich"] .win.lit { filter: drop-shadow(0 0 5px rgb(255 168 77 / 0
 
 .swing { transform-origin: 50% 0; animation: swing 3.4s ease-in-out infinite; }
 @keyframes swing { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+
+/* Public pages use the same light slate and rose palette as the home page. */
+.public-page {
+  --color-graphite-950: #0f172a;
+  --color-graphite-900: #fff;
+  --color-graphite-800: #f8fafc;
+  --color-graphite-700: #e2e8f0;
+  --color-graphite-600: #cbd5e1;
+  --color-graphite-500: #94a3b8;
+  --color-graphite-400: #64748b;
+  --color-graphite-300: #475569;
+  --color-graphite-200: #334155;
+  --color-ember-300: #9f1239;
+  --color-ember-400: #9f1239;
+  --color-ember-500: #881337;
+  --color-ember-600: #4c0519;
+  --color-bone: #0f172a;
+  --color-ok: #15803d;
+  --color-danger: #dc2626;
+  color-scheme: light;
+  color: #0f172a;
+  background-color: #fff;
+}
+.public-page-auth { background-color: #f8fafc; }
+.public-page .glass,
+.public-page .glass-quiet {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(15 35 71 / 0.045);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.public-page .glass-hero {
+  border-color: #fecdd3;
+  background: linear-gradient(110deg, #fff1f4 0%, #fff8f9 72%, #fff 100%);
+}
+.public-page .glass-hero::before {
+  background: linear-gradient(135deg, rgb(159 18 57 / 0.45), rgb(159 18 57 / 0) 38%);
+}
+.public-page .cursor-glow::after {
+  background: radial-gradient(420px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgb(159 18 57 / 0.1), transparent 60%);
+}
+.public-page [class*="border-white/"] { border-color: #e2e8f0 !important; }
+.public-page [class*="bg-white/"] { background-color: #f8fafc !important; }
+.public-page input,
+.public-page textarea,
+.public-page select {
+  border-color: #cbd5e1;
+  background-color: #fff;
+  color: #0f172a;
+}
+.public-page input::placeholder,
+.public-page textarea::placeholder { color: #94a3b8; }
+.public-page button[class*="bg-ember-500"] { color: #fff; }
+.public-page .skeleton {
+  background: linear-gradient(90deg, #e9eff8, #f8fafc, #e9eff8);
+  background-size: 200% 100%;
+}
+html[data-perf="lite"] .public-page .glass,
+html[data-perf="lite"] .public-page .glass-quiet,
+html[data-perf="lite"] .public-page .glass-hero {
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(15 35 71 / 0.045);
+}
+.public-page ::selection { background: rgb(136 19 55 / 0.18); }

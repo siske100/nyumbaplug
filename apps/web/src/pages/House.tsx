@@ -58,11 +58,11 @@ export default function House() {
   const { data: h, isPending, isError } = useQuery({ queryKey: ["listing", id], queryFn: () => api.site.house(id), staleTime: 60_000 });
   const [shot, setShot] = useState(0);
 
-  if (isPending) return <HouseLoader label="Opening the house" />;
-  if (isError || !h) return <Notice icon="missing" title="This house is no longer listed" body="It may be full now. Browse other vacant houses." action={{ to: "/", label: "Browse houses" }} />;
+  if (isPending) return <div className="public-page -mx-3 -mt-4 min-h-[70dvh] bg-white px-3 py-6 sm:-mx-6 sm:px-6 sm:py-8"><HouseLoader label="Opening the house" /></div>;
+  if (isError || !h) return <div className="public-page -mx-3 -mt-4 min-h-[70dvh] bg-white px-3 py-6 sm:-mx-6 sm:px-6 sm:py-8"><Notice icon="missing" title="This house is no longer listed" body="It may be full now. Browse other vacant houses." action={{ to: "/", label: "Browse houses" }} /></div>;
 
   return (
-    <div className="grid gap-6">
+    <div className="public-page -mx-3 -mt-4 grid min-h-[70dvh] gap-6 bg-white px-3 py-6 sm:-mx-6 sm:px-6 sm:py-8">
       <Link to="/" className="text-sm text-graphite-300 hover:text-bone">← All houses</Link>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="grid gap-3">
