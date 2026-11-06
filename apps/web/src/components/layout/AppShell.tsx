@@ -6,7 +6,7 @@ import { useSession, useSignOut } from "@/features/auth/useSession";
 import { cn } from "@/lib/cn";
 import { Ambient } from "./Ambient";
 
-export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number; mobileOnly?: boolean; headerLabel?: string }
+export interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number; mobileOnly?: boolean; headerLabel?: string; mobileLabel?: string }
 
 export function AppShell({ items, railFooter, children, theme = "default" }: { items: NavItem[]; railFooter?: ReactNode; children?: ReactNode; theme?: "default" | "landlord" | "tenant" }) {
   const { data: session } = useSession();
@@ -22,6 +22,9 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
     return !hash && location.pathname === pathname && (!query || location.search === `?${query}`);
   });
   const pageTitle = currentItem?.headerLabel ?? currentItem?.label ?? "Dashboard";
+  const mobilePrimaryItems = theme === "landlord"
+    ? items.filter((item) => ["/landlord", "/landlord/houses", "/landlord/visits", "/landlord/finances"].includes(item.to))
+    : [];
   const initials = session?.name?.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "NP";
   const isCurrent = (item: NavItem) => {
     const [path, hash] = item.to.split("#");
@@ -129,12 +132,33 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
               </div>
             </div>
           </header>
-          <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-8">
+          <main className={cn("min-w-0 px-4 py-5 sm:px-6 lg:px-8", theme === "landlord" && "pb-24 md:pb-5")}>
             <p className="sr-only">Signed in as {session?.name}</p>
             {children ?? <Outlet />}
           </main>
         </div>
       </div>
+
+      {theme === "landlord" && (
+        <nav aria-label="Landlord quick navigation" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-4px_18px_rgb(15_23_42_/_0.08)] backdrop-blur md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+          {mobilePrimaryItems.map((item) => {
+            const Icon = item.icon;
+            const active = isCurrent(item);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={!item.to.includes("#")}
+                aria-current={active ? "page" : undefined}
+                className={cn("grid min-h-12 min-w-0 place-items-center content-center gap-0.5 rounded-lg text-[10px] font-semibold", active ? "text-rose-900" : "text-slate-600")}
+              >
+                <Icon className="size-5" aria-hidden />
+                <span className="max-w-full truncate">{item.mobileLabel ?? item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      )}
 
       {menuOpen && (
         <div className="fixed inset-0 z-30 md:hidden">

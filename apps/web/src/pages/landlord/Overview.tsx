@@ -74,11 +74,11 @@ export default function Overview() {
     <div className="grid gap-3.5">
       {errors.map((error, index) => <ErrorNote key={index} error={error} />)}
 
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 lg:grid-cols-4">
         {metrics.map(({ label, value, note, icon: Icon, color }) => (
-          <Panel key={label} className={`dashboard-landlord-stat ${color} p-3.5`}>
-            <span className="grid size-9 place-items-center rounded-xl bg-white/70"><Icon className="size-5" aria-hidden /></span>
-            <p className="mt-2 text-2xl font-extrabold leading-none text-slate-900">{value}</p>
+          <Panel key={label} className={`dashboard-landlord-stat ${color} p-2.5 sm:p-3.5`}>
+            <span className="grid size-8 place-items-center rounded-xl bg-white/70 sm:size-9"><Icon className="size-4.5 sm:size-5" aria-hidden /></span>
+            <p className="mt-2 break-words text-xl font-extrabold leading-none text-slate-900 sm:text-2xl">{value}</p>
             <p className="mt-1 text-xs font-semibold text-slate-800">{label}</p>
             <p className="mt-0.5 text-[11px] text-slate-600">{note}</p>
           </Panel>
