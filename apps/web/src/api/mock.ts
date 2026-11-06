@@ -171,6 +171,14 @@ export const mockApi: Api = {
       if (!request) throw new ApiError(404, "Support request not found");
       request.status = status;
     },
+    async replyToSupportRequest(id: string, response: string) {
+      requireSession("admin");
+      await wait();
+      const request = supportRequests.find((item) => item.id === id);
+      if (!request) throw new ApiError(404, "Support request not found");
+      request.adminResponse = response.trim();
+      request.adminRespondedAt = new Date().toISOString();
+    },
   }), {
     get(target, key, receiver) {
       if (Reflect.has(target, key)) return Reflect.get(target, key, receiver);
@@ -192,7 +200,8 @@ export const mockApi: Api = {
       await wait();
       supportRequests.push({
         id: crypto.randomUUID(), userId: session.userId, name: session.name, email: session.email ?? "",
-        role: session.role, message: message.trim(), status: "open", createdAt: new Date().toISOString(),
+        role: session.role, message: message.trim(), adminResponse: null, adminRespondedAt: null,
+        status: "open", createdAt: new Date().toISOString(),
       });
     },
     async mine() {
@@ -200,7 +209,7 @@ export const mockApi: Api = {
       await wait();
       return supportRequests.filter((item) => item.userId === session.userId)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map(({ id, message, status, createdAt }) => ({ id, message, status, createdAt }));
+        .map(({ id, message, adminResponse, adminRespondedAt, status, createdAt }) => ({ id, message, adminResponse, adminRespondedAt, status, createdAt }));
     },
   },
 

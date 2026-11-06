@@ -146,13 +146,19 @@ export const adminApi: AdminApi = {
     if (error) throw dbError(error);
   },
   async supportRequests() {
-    const { data, error } = await supabase.rpc("admin_support_requests");
+    const { data, error } = await supabase.rpc("admin_support_requests_with_replies");
     if (error) throw dbError(error);
     return ((data ?? []) as Row[]).map((r): SupportRequest => ({
       id: r.id as string, userId: r.user_id as string, name: (r.full_name as string) ?? "Account",
       email: (r.email as string) ?? "", role: r.role as SupportRequest["role"],
-      message: r.message as string, status: r.status as SupportRequest["status"], createdAt: r.created_at as string,
+      message: r.message as string, adminResponse: (r.admin_response as string | null) ?? null,
+      adminRespondedAt: (r.admin_responded_at as string | null) ?? null,
+      status: r.status as SupportRequest["status"], createdAt: r.created_at as string,
     }));
+  },
+  async replyToSupportRequest(id, response) {
+    const { error } = await supabase.rpc("admin_reply_support_request", { p_request: id, p_response: response.trim() });
+    if (error) throw dbError(error);
   },
   async updateSupportRequest(id, status) {
     const { error } = await supabase.rpc("admin_update_support_request", { p_request: id, p_status: status });

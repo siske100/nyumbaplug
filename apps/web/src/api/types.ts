@@ -87,6 +87,8 @@ export interface SupportRequest {
   email: string;
   role: Role;
   message: string;
+  adminResponse: string | null;
+  adminRespondedAt: string | null;
   status: "open" | "resolved";
   createdAt: string;
 }
@@ -108,6 +110,7 @@ export interface AdminApi {
   marketplaceSettlements(): Promise<MarketplaceSettlement[]>;
   settleMarketplaceBooking(id: string, action: "pay_marketer" | "refund_client", ref: string): Promise<void>;
   supportRequests(): Promise<SupportRequest[]>;
+  replyToSupportRequest(id: string, response: string): Promise<void>;
   updateSupportRequest(id: string, status: SupportRequest["status"]): Promise<void>;
 }
 
@@ -132,7 +135,7 @@ export interface Api {
   admin: AdminApi;
   support: {
     submit(message: string): Promise<void>;
-    mine(): Promise<Pick<SupportRequest, "id" | "message" | "status" | "createdAt">[]>;
+    mine(): Promise<Pick<SupportRequest, "id" | "message" | "adminResponse" | "adminRespondedAt" | "status" | "createdAt">[]>;
   };
   marketplace: MarketplaceApi;
   devSignIn?(role: Role): Promise<Session>;

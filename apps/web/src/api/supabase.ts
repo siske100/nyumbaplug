@@ -177,11 +177,12 @@ export const supabaseApi: Api = {
     },
     async mine() {
       const userId = await currentUserId();
-      const { data, error } = await supabase.from("support_requests").select("id, message, status, created_at")
+      const { data, error } = await supabase.from("support_requests").select("id, message, admin_response, admin_responded_at, status, created_at")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
       if (error) throw dbError(error);
       return (data ?? []).map((row) => ({
-        id: row.id, message: row.message, status: row.status as "open" | "resolved", createdAt: row.created_at,
+        id: row.id, message: row.message, adminResponse: row.admin_response, adminRespondedAt: row.admin_responded_at,
+        status: row.status as "open" | "resolved", createdAt: row.created_at,
       }));
     },
   },

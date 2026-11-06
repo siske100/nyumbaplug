@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { CalendarDays, CircleHelp, House, Info, Menu, Search, UserRound, X } from "lucide-react";
+import { CircleHelp, House, Info, Menu, Search, X } from "lucide-react";
 import { Ambient } from "./Ambient";
 
 export function PublicLayout() {
@@ -52,22 +52,8 @@ export function PublicLayout() {
           </nav>
         )}
       </header>
-      <main className="mx-auto w-full px-3 pb-20 pt-4 sm:px-6 lg:pb-16"><Outlet /></main>
-      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-4px_18px_rgb(15_23_42_/_0.08)] backdrop-blur lg:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
-        <Link to="/" aria-current={isHome && !location.hash ? "page" : undefined} className={`grid min-h-12 place-items-center gap-0.5 text-xs font-semibold ${isHome && !location.hash ? "text-rose-900" : "text-slate-600"}`}>
-          <House className="size-6" aria-hidden />Home
-        </Link>
-        <Link to="/#properties" aria-current={location.hash === "#properties" ? "page" : undefined} className={`grid min-h-12 place-items-center gap-0.5 text-xs font-semibold ${location.hash === "#properties" ? "text-rose-900" : "text-slate-600"}`}>
-          <Search className="size-6" aria-hidden />Search
-        </Link>
-        <Link to="/sign-in" className="grid min-h-12 place-items-center gap-0.5 text-xs font-semibold text-slate-600">
-          <CalendarDays className="size-6" aria-hidden />Bookings
-        </Link>
-        <Link to="/sign-in" className="grid min-h-12 place-items-center gap-0.5 text-xs font-semibold text-slate-600">
-          <UserRound className="size-6" aria-hidden />Account
-        </Link>
-      </nav>
-      <footer className="mx-auto grid w-full gap-8 px-3 pb-24 text-sm text-graphite-400 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:pb-8">
+      <main className="mx-auto w-full px-3 pb-8 pt-4 sm:px-6"><Outlet /></main>
+      <footer className="mx-auto grid w-full gap-8 px-3 pb-8 text-sm text-graphite-400 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
         <div className="grid content-start gap-3">
           <span className="font-medium text-bone">HousePlug Kenya</span>
           <Link to="/about#about-rental-houses" className="w-fit hover:text-bone">About the service</Link>
