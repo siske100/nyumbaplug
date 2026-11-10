@@ -74,7 +74,7 @@ export default function MpesaSetup({ embedded = false }: { embedded?: boolean })
 
   return (
     <div id="payment-setup" className="grid gap-4">
-      {!embedded && <PageHead title="Direct rent payment setup" sub="Connect your own verified Daraja Paybill. Rent settles directly to your merchant account; NyumbaPlug never collects or holds rent." />}
+      {!embedded && <PageHead title="Direct rent payment setup" sub="Connect your own verified Daraja Paybill. Rent settles directly to your merchant account; HousePlug Kenya never collects or holds rent." />}
       <ErrorNote error={acct.error} />
       <Panel tone="hero" className="grid gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -85,7 +85,7 @@ export default function MpesaSetup({ embedded = false }: { embedded?: boolean })
         </div>
         {a?.failureReason && <p role="alert" className="text-sm text-danger">{a.failureReason}</p>}
         {result && <p role="status" className="text-sm text-graphite-200">{result}</p>}
-        <p className="text-sm text-graphite-300">Enter credentials issued for your own Paybill by Safaricom. NyumbaPlug tests the connection and stores the credentials encrypted on the server. They are never returned to the browser.</p>
+        <p className="text-sm text-graphite-300">Enter credentials issued for your own Paybill by Safaricom. HousePlug Kenya tests the connection and stores the credentials encrypted on the server. They are never returned to the browser.</p>
         {!showForm ? <div><Button variant="glass" onClick={() => setShowForm(true)}>{a?.status === "connected" ? "Replace Daraja details" : "Connect my Paybill"}</Button></div> : (
           <div className="grid gap-4">
             <Field label="Paybill number" inputMode="numeric" value={daraja.shortcode} onChange={(e) => setDaraja({ ...daraja, shortcode: e.target.value.replace(/\D/g, "") })} error={errs.shortcode} />

@@ -84,7 +84,7 @@ export default function Pay() {
         {celebrate ? <PayCelebration message="Payment received. Thank you!" /> : h.balance > 0 ? (
           <>
             <h2 className="text-2xl">Pay rent</h2>
-            {h.paymentMode === "unavailable" ? <p role="status" className="text-graphite-300">Your landlord has not yet enabled a verified direct payment method. NyumbaPlug does not collect or hold rent. Please contact your landlord for their payment instructions.</p> : <p className="text-graphite-300">
+            {h.paymentMode === "unavailable" ? <p role="status" className="text-graphite-300">Your landlord has not yet enabled a verified direct payment method. HousePlug Kenya does not collect or hold rent. Please contact your landlord for their payment instructions.</p> : <p className="text-graphite-300">
               You pay the full balance of <span className="text-bone">{formatKes(h.balance)}</span>.
               {h.paymentMode === "bank_paybill"
                 ? " Transfer this exact amount directly to your landlord's bank account. Your landlord must confirm receipt before it is added to your rent record."

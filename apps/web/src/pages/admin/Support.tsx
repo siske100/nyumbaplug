@@ -35,7 +35,7 @@ function SupportReply({ request }: { request: SupportRequest }) {
         value={response}
         onChange={(event) => setResponse(event.target.value)}
         placeholder="Write a response the user can see in Help & support."
-        className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <ErrorNote error={reply.error} />

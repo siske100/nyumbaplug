@@ -1,22 +1,23 @@
-# Rental Houses Kenya
+# HousePlug Kenya
 
-React + TypeScript + TanStack Query + Tailwind (orange and grey glass) on Supabase, with M-Pesa (Daraja) payments and Celcom SMS.
+HousePlug Kenya helps people find rental homes, book viewings, and manage properties across Kenya.
 
-```
-apps/web          the website: public, landlord, tenant and admin areas
-packages/shared   the rules shared by the website and the server
-supabase/         database migrations, server functions, scheduled jobs, 197 tests' worth of proof
-docs/             ARCHITECTURE, SECURITY, PAYMENTS, LAUNCH-CHECKLIST
-```
+## Project
 
-## Run it
+- `apps/web` — React + TypeScript website for public listings, landlords, tenants, and administrators.
+- `packages/shared` — rules shared by the website and Supabase functions.
+- `supabase` — database migrations, Edge Functions, scheduled jobs, and tests.
+- `docs` — architecture, security, payment, and launch guidance.
+
+The website uses Supabase for its backend, M-Pesa Daraja for supported payments, and Celcom for SMS.
+
+## Run locally
+
 ```bash
 npm install
-npm run dev          # the website (needs apps/web/.env, see supabase/README.md)
-npm test             # 197 tests: shared rules, database, server functions
-npm run build        # typecheck and production build
+npm run dev
+npm test
+npm run build
 ```
-Without Supabase settings the site runs on a development stand-in that only shows the public pages and sign-in. Everything else needs the real backend.
 
-**Start with `supabase/README.md`, then `docs/LAUNCH-CHECKLIST.md`.**
-# nyumbaplug
+Configure `apps/web/.env` to connect to Supabase. Without backend settings, the app uses a limited development stand-in. See [supabase/README.md](./supabase/README.md) for backend setup, then [docs/LAUNCH-CHECKLIST.md](./docs/LAUNCH-CHECKLIST.md) before deployment.

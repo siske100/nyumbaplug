@@ -22,7 +22,7 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
     return !hash && location.pathname === pathname && (!query || location.search === `?${query}`);
   });
   const pageTitle = currentItem?.headerLabel ?? currentItem?.label ?? "Dashboard";
-  const initials = session?.name?.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "NP";
+  const initials = session?.name?.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "HP";
   const isCurrent = (item: NavItem) => {
     const [path, hash] = item.to.split("#");
     const [pathname, query] = path!.split("?");
@@ -80,7 +80,7 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
             {items.filter((i) => !i.mobileOnly).map((item) => {
               const { to, label, icon: Icon, badge } = item;
               return <NavLink key={to} to={to} end={!to.includes("#")} className={() => navClass(item)}>
-                <Icon className={theme === "landlord" ? "size-4 shrink-0" : "size-4.5 shrink-0"} aria-hidden />{label}{!!badge && <span className="ml-auto rounded-full bg-blue-400/20 px-2 text-xs text-blue-100">{badge}</span>}
+                <Icon className={theme === "landlord" ? "size-4 shrink-0" : "size-4.5 shrink-0"} aria-hidden />{label}{!!badge && <span className="ml-auto rounded-full bg-emerald-400/20 px-2 text-xs text-emerald-100">{badge}</span>}
               </NavLink>
             })}
           </nav>
@@ -88,16 +88,16 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
             {theme === "landlord" ? (
               <>
                 <div className="dashboard-landlord-upgrade rounded-xl p-2.5">
-                  <Crown className="mb-1 size-5 text-amber-300" aria-hidden />
+                  <Crown className="mb-1 size-5 text-emerald-300" aria-hidden />
                   <p className="text-[11px] font-bold text-white">Premium Landlord</p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-rose-100">{railFooter ? "Renew soon to keep your account active." : "Your landlord plan"}</p>
-                  <Link to="/landlord/plan" className="mt-2 block rounded-md bg-amber-400 px-2 py-1.5 text-center text-[10px] font-extrabold text-rose-950 hover:bg-amber-300">Upgrade Plan</Link>
+                  <p className="mt-0.5 text-[10px] leading-4 text-emerald-100">{railFooter ? "Renew soon to keep your account active." : "Your landlord plan"}</p>
+                  <Link to="/landlord/plan" className="mt-2 block rounded-md bg-emerald-300 px-2 py-1.5 text-center text-[10px] font-extrabold text-emerald-950 hover:bg-emerald-200">Upgrade Plan</Link>
                 </div>
                 <div className="dashboard-landlord-city rounded-lg" role="img" aria-label="Apartment buildings at dusk" />
               </>
             ) : <div className="dashboard-sidebar-promo rounded-xl p-3.5">
-              <p className="text-xs font-semibold text-white">Kenya&apos;s Property Marketplace</p>
-              <p className="mt-1 text-[11px] leading-4 text-blue-100/80">{theme === "tenant" ? "Manage your tenancy and rent payments." : "Manage rentals and payments in one place."}</p>
+              <p className="text-xs font-semibold text-white">HousePlug Kenya</p>
+              <p className="mt-1 text-[11px] leading-4 text-emerald-100/80">{theme === "tenant" ? "Manage your tenancy and rent payments." : "Find, book, and manage homes in one place."}</p>
             </div>}
             {theme !== "landlord" && railFooter}
             <button onClick={() => signOut.mutate()} className="dashboard-nav-idle flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm">
@@ -133,7 +133,7 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
                 <Bell className="size-5" aria-hidden />
               </button>
               <div className="flex items-center gap-2">
-                <span className="dashboard-avatar grid size-9 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-800">{initials}</span>
+                <span className="dashboard-avatar grid size-9 place-items-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">{initials}</span>
                 <span className="hidden max-w-36 truncate text-sm font-semibold text-slate-700 sm:block">{session?.name ?? "Account"}</span>
                 <ChevronDown className="hidden size-4 text-slate-500 sm:block" aria-hidden />
               </div>
@@ -160,14 +160,14 @@ export function AppShell({ items, railFooter, children, theme = "default" }: { i
               {items.filter((i) => !i.mobileOnly).map((item) => {
                 const { to, label, icon: Icon, badge } = item;
                 return <NavLink key={to} to={to} end={!to.includes("#")} onClick={() => setMenuOpen(false)} className={() => navClass(item)}>
-                  <Icon className="size-4.5" aria-hidden />{label}{!!badge && <span className="ml-auto rounded-full bg-blue-400/20 px-2 text-xs text-blue-100">{badge}</span>}
+                  <Icon className="size-4.5" aria-hidden />{label}{!!badge && <span className="ml-auto rounded-full bg-emerald-400/20 px-2 text-xs text-emerald-100">{badge}</span>}
                 </NavLink>
               })}
             </nav>
             <div className="mt-auto grid gap-3 pt-6">
               <div className="dashboard-sidebar-promo rounded-xl p-3.5">
                 <p className="text-xs font-semibold text-white">Kenya&apos;s Property Marketplace</p>
-                <p className="mt-1 text-[11px] leading-4 text-blue-100/80">Manage rentals and payments in one place.</p>
+                <p className="mt-1 text-[11px] leading-4 text-emerald-100/80">Find, book, and manage homes in one place.</p>
               </div>
               {railFooter}
               <button onClick={() => { setMenuOpen(false); signOut.mutate(); }} className="dashboard-nav-idle flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-sm">

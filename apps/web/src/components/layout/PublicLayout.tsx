@@ -12,18 +12,12 @@ export function PublicLayout() {
       <Ambient />
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur sm:px-6">
         <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="relative block size-12 shrink-0 overflow-hidden lg:size-10" aria-hidden="true">
-              <img src="/houseplug-kenya-mark.png" alt="" className="absolute -left-px -top-px w-[50px] max-w-none lg:w-[42px]" />
-            </span>
-            <span className="grid text-sm font-extrabold leading-tight sm:text-base">
-              <span className="text-rose-900">HousePlug</span>
-              <span className="text-emerald-700">Kenya</span>
-            </span>
+          <Link to="/" className="flex items-center gap-2.5" aria-label="HousePlug Kenya home">
+            <img src="/houseplug-kenya-wordmark.png" alt="HousePlug Kenya" className="h-8 w-auto sm:h-10 lg:h-12" />
             <span className="sr-only">HousePlug Kenya — Find, Book, Manage</span>
           </Link>
           <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-lg bg-rose-900 px-3 py-2 text-sm font-semibold text-white"><House className="size-4" aria-hidden />Home</Link>
+            <Link to="/" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"><House className="size-4" aria-hidden />Home</Link>
             <Link to="/#properties" className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Search className="size-4" aria-hidden />Properties</Link>
             <Link to="/about" className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Info className="size-4" aria-hidden />About Us</Link>
             {isHome
@@ -35,8 +29,8 @@ export function PublicLayout() {
             <button type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="grid size-10 place-items-center rounded-full text-slate-800 hover:bg-slate-100 lg:hidden">
               {menuOpen ? <X className="size-6" aria-hidden /> : <Menu className="size-6" aria-hidden />}
             </button>
-            <Link to="/sign-in" className="hidden rounded-full border border-rose-800 px-3 py-2 text-sm font-semibold text-rose-900 hover:bg-rose-50 lg:inline-flex">Sign in</Link>
-            <Link to="/sign-up" className="hidden rounded-full bg-rose-900 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-800 lg:inline-flex">Register</Link>
+            <Link to="/sign-in" className="hidden rounded-full border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 lg:inline-flex">Sign in</Link>
+            <Link to="/sign-up" className="hidden rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 lg:inline-flex">Register</Link>
           </div>
         </div>
         {menuOpen && (
@@ -46,8 +40,8 @@ export function PublicLayout() {
               ? <a href="https://wa.me/254799326074" target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Help on WhatsApp</a>
               : <Link to="/sign-in" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Help & support</Link>}
             <div className="grid grid-cols-2 gap-2 px-2 py-1">
-              <Link to="/sign-in" onClick={() => setMenuOpen(false)} className="rounded-full border border-rose-800 px-3 py-2 text-center text-sm font-semibold text-rose-900">Sign in</Link>
-              <Link to="/sign-up" onClick={() => setMenuOpen(false)} className="rounded-full bg-rose-900 px-3 py-2 text-center text-sm font-semibold text-white">Register</Link>
+              <Link to="/sign-in" onClick={() => setMenuOpen(false)} className="rounded-full border border-emerald-700 px-3 py-2 text-center text-sm font-semibold text-emerald-900">Sign in</Link>
+              <Link to="/sign-up" onClick={() => setMenuOpen(false)} className="rounded-full bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white">Register</Link>
             </div>
           </nav>
         )}

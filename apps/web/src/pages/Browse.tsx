@@ -45,26 +45,26 @@ export default function Browse() {
       <section
         className="relative isolate flex min-h-[28rem] flex-col justify-between overflow-hidden bg-slate-950 px-4 pb-32 pt-8 text-white lg:min-h-[22rem] lg:px-8 lg:pb-4 lg:pt-10"
         style={{
-          backgroundImage: "linear-gradient(90deg, rgb(15 23 42 / 0.92) 0%, rgb(15 23 42 / 0.67) 48%, rgb(15 23 42 / 0.08) 100%), linear-gradient(0deg, rgb(15 23 42 / 0.72), transparent 65%), url('/apartment-building.jpg')",
+          backgroundImage: "linear-gradient(90deg, rgb(9 39 29 / 0.94) 0%, rgb(10 64 44 / 0.72) 48%, rgb(9 39 29 / 0.16) 100%), linear-gradient(0deg, rgb(11 39 29 / 0.7), transparent 65%), url('/apartment-building.jpg')",
           backgroundPosition: "center, center, center 56%",
           backgroundSize: "cover",
         }}
       >
         <div className="mx-auto w-full max-w-[1440px]">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold backdrop-blur">
-            <span className="grid size-7 place-items-center rounded-full bg-emerald-600"><House className="size-4" aria-hidden /></span>
-            Rental Houses Kenya
+            <span className="grid size-7 place-items-center rounded-full bg-emerald-500"><House className="size-4" aria-hidden /></span>
+            HousePlug Kenya
           </p>
           <h1 className="mt-3 max-w-[8em] font-display text-5xl font-bold leading-[1.02] lg:max-w-2xl">
-            Find vacant rental homes across <span className="text-emerald-400">Kenya</span>
+            Find, Book, Manage homes across <span className="text-emerald-300">Kenya</span>
           </h1>
           <p className="mt-3 max-w-sm text-base leading-6 text-white/90 lg:max-w-xl">
-            Browse verified listings without an account, compare options, and book viewings with ease.
+            Explore verified rentals, book viewings in minutes, and manage your home with a simpler all-in-one experience.
           </p>
           <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-white/95 sm:text-sm">
-            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-5 text-yellow-400" aria-hidden />Verified listings</span>
-            <span className="inline-flex items-center gap-1.5"><Zap className="size-5 text-yellow-400" aria-hidden />Easy booking</span>
-            <span className="inline-flex items-center gap-1.5"><MapPin className="size-5 text-yellow-400" aria-hidden />Nationwide coverage</span>
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-5 text-emerald-300" aria-hidden />Verified listings</span>
+            <span className="inline-flex items-center gap-1.5"><Zap className="size-5 text-emerald-300" aria-hidden />Easy booking</span>
+            <span className="inline-flex items-center gap-1.5"><MapPin className="size-5 text-emerald-300" aria-hidden />Nationwide coverage</span>
           </div>
         </div>
 
@@ -89,7 +89,7 @@ export default function Browse() {
               {PRICE_LIMITS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
-          <Button type="button" onClick={scrollToListings} className="h-11 min-w-11 bg-rose-900 px-3 text-white hover:bg-rose-800 lg:px-4">
+          <Button type="button" onClick={scrollToListings} className="h-11 min-w-11 bg-emerald-600 px-3 text-white hover:bg-emerald-500 lg:px-4">
             <Search className="size-5 shrink-0" aria-hidden /><span className="lg:hidden">Search</span><span className="hidden lg:inline">Search properties</span>
           </Button>
         </div>
@@ -103,9 +103,9 @@ export default function Browse() {
           <h2 className="mb-3 font-sans text-2xl font-extrabold text-slate-900 lg:hidden">Browse by Property Type</h2>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex max-w-full flex-wrap gap-1.5" role="group" aria-label="Filter by property type">
-              <button onClick={() => setType("")} className={cn("rounded-full border px-4 py-2 text-sm font-semibold", type === "" ? "border-rose-900 bg-rose-900 text-white" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-rose-300 lg:bg-white")}>All properties</button>
+              <button onClick={() => setType("")} className={cn("rounded-full border px-4 py-2 text-sm font-semibold", type === "" ? "border-emerald-700 bg-emerald-600 text-white" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-200 lg:bg-white")}>All properties</button>
               {QUICK_TYPES.map((item) => (
-                <button key={item} onClick={() => setType(item)} className={cn("rounded-full border px-4 py-2 text-sm font-semibold", type === item ? "border-rose-900 bg-rose-900 text-white" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-rose-300 lg:bg-white")}><BedDouble className="mr-1 inline size-4" aria-hidden />{item === "2 Bedroom" || item === "3 Bedroom" ? `${item}s` : item}</button>
+                <button key={item} onClick={() => setType(item)} className={cn("rounded-full border px-4 py-2 text-sm font-semibold", type === item ? "border-emerald-700 bg-emerald-600 text-white" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-200 lg:bg-white")}><BedDouble className="mr-1 inline size-4" aria-hidden />{item === "2 Bedroom" || item === "3 Bedroom" ? `${item}s` : item}</button>
               ))}
               <label className="sr-only" htmlFor="more-types">More property types</label>
               <select id="more-types" value={type && !QUICK_TYPES.includes(type) ? type : ""} onChange={(event) => setType(event.target.value as HouseType | "")} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600 lg:bg-white">
@@ -125,15 +125,15 @@ export default function Browse() {
                 <option value="low">Price: low to high</option>
                 <option value="high">Price: high to low</option>
               </select>
-              <button type="button" aria-label="Grid view" aria-pressed={view === "grid"} onClick={() => setView("grid")} className={cn("grid size-9 place-items-center rounded-lg", view === "grid" ? "bg-rose-900 text-white" : "bg-white text-slate-600")}><Grid2X2 className="size-4" aria-hidden /></button>
-              <button type="button" aria-label="List view" aria-pressed={view === "list"} onClick={() => setView("list")} className={cn("grid size-9 place-items-center rounded-lg", view === "list" ? "bg-rose-900 text-white" : "bg-white text-slate-600")}><List className="size-4" aria-hidden /></button>
+              <button type="button" aria-label="Grid view" aria-pressed={view === "grid"} onClick={() => setView("grid")} className={cn("grid size-9 place-items-center rounded-lg", view === "grid" ? "bg-emerald-600 text-white" : "bg-white text-slate-600")}><Grid2X2 className="size-4" aria-hidden /></button>
+              <button type="button" aria-label="List view" aria-pressed={view === "list"} onClick={() => setView("list")} className={cn("grid size-9 place-items-center rounded-lg", view === "list" ? "bg-emerald-600 text-white" : "bg-white text-slate-600")}><List className="size-4" aria-hidden /></button>
             </div>
           </div>
 
           <div id="listing-results" className="mt-7 scroll-mt-24" aria-live="polite" aria-busy={isPending || isPlaceholderData}>
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="text-2xl font-bold text-slate-900">Featured Properties</h2>
-              <button type="button" onClick={scrollToResults} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-rose-900 lg:hidden">See all <ArrowRight className="size-4" aria-hidden /></button>
+              <button type="button" onClick={scrollToResults} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-emerald-700 lg:hidden">See all <ArrowRight className="size-4" aria-hidden /></button>
             </div>
             {isError ? (
               <Panel className="bg-white p-8 text-center text-slate-700">
@@ -169,12 +169,12 @@ export default function Browse() {
                               </div>
                               <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Verified</span>
                             </div>
-                            <p className="font-display text-lg font-bold text-rose-900">{formatKes(house.rent)} <span className="font-sans text-xs font-medium text-slate-500">/ month</span></p>
+                            <p className="font-display text-lg font-bold text-emerald-700">{formatKes(house.rent)} <span className="font-sans text-xs font-medium text-slate-500">/ month</span></p>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
                               <span className="inline-flex items-center gap-1"><BedDouble className="size-3.5" aria-hidden />{house.type}</span>
                               <span>{house.vacant}/{house.total} vacant</span>
                               <span className="inline-flex items-center gap-1"><Images className="size-3.5" aria-hidden />{house.photoCount} photos</span>
-                              <span className="ml-auto inline-flex items-center gap-1 font-bold text-rose-900">View details <ArrowRight className="size-3.5" aria-hidden /></span>
+                              <span className="ml-auto inline-flex items-center gap-1 font-bold text-emerald-700">View details <ArrowRight className="size-3.5" aria-hidden /></span>
                             </div>
                           </div>
                         </article>
@@ -183,7 +183,7 @@ export default function Browse() {
                   ))}
                 </ul>
                 {sorted.length > 1 && <div className="mt-3 flex justify-center gap-2 lg:hidden" aria-label="Property carousel pages">
-                  {sorted.map((house, index) => <button key={house.id} type="button" aria-label={`Show property ${index + 1}`} aria-current={activeSlide === index ? "true" : undefined} onClick={() => selectSlide(index)} className={cn("size-2.5 rounded-full", activeSlide === index ? "bg-rose-900" : "bg-slate-300")} />)}
+                  {sorted.map((house, index) => <button key={house.id} type="button" aria-label={`Show property ${index + 1}`} aria-current={activeSlide === index ? "true" : undefined} onClick={() => selectSlide(index)} className={cn("size-2.5 rounded-full", activeSlide === index ? "bg-emerald-600" : "bg-slate-300")} />)}
                 </div>}
               </>
             )}

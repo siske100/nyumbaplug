@@ -13,11 +13,11 @@ export default function About() {
 
   return (
     <div className="grid gap-6">
-      <PageHead title="About Rental Houses Kenya" sub="Information about the service, who it is for, and why we ask for information." />
+      <PageHead title="About HousePlug Kenya" sub="Information about the service, who it is for, and why we ask for information." />
 
       <Panel id="about-rental-houses" className="grid scroll-mt-24 gap-3 p-5 sm:p-7">
         <p className="text-sm font-medium uppercase tracking-[0.16em] text-ember-300">About the service</p>
-        <h2 className="text-3xl">Rental Houses Kenya</h2>
+        <h2 className="text-3xl">HousePlug Kenya</h2>
         <p className="max-w-3xl leading-7 text-graphite-200">
           A rental discovery and property-management platform operated by Referraliq Solutions. People can browse vacant rental listings across Kenya without signing in, compare rent and property details, and request a viewing. Landlords can publish available houses and manage viewing requests, tenants, rent records, notices and tenant SMS. Invited tenants can use their account areas to manage tenancy-related tasks.
         </p>

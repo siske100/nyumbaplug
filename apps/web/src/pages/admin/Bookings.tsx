@@ -28,7 +28,7 @@ export default function AdminBookings() {
             <p className="text-sm text-slate-500">All landlord viewing requests</p>
             <p className="mt-1 text-3xl font-bold text-slate-900">{isPending ? "—" : total.toLocaleString("en-KE")}</p>
           </div>
-          <span className="grid size-11 place-items-center rounded-xl bg-blue-100 text-blue-700">
+          <span className="grid size-11 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
             <CalendarDays className="size-5" aria-hidden />
           </span>
         </div>

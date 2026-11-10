@@ -6,7 +6,7 @@ const sections = [
   {
     title: "Information we collect and where it comes from",
     content: <>
-      <p>Referraliq Solutions operates Rental Houses Kenya. This policy applies to the public website and landlord, tenant and administrator accounts. We collect information you enter, information generated when you use platform features, and limited information returned by sign-in and service providers.</p>
+      <p>Referraliq Solutions operates HousePlug Kenya. This policy applies to the public website and landlord, tenant and administrator accounts. We collect information you enter, information generated when you use platform features, and limited information returned by sign-in and service providers.</p>
       <ul className="list-disc space-y-1 pl-5">
         <li><strong>Account and identity data:</strong> name, email address, phone number, account role and status, password authentication data managed by Supabase Auth, email and phone verification status, and authenticator-factor status for administrator accounts.</li>
         <li><strong>Google sign-in data:</strong> if you select “Continue with Google,” Google provides an account identifier and basic profile information such as your name and email address so we can authenticate you, create or access your landlord account, display your account identity, and protect sign-in. Supabase Auth also processes the authentication response and session. The app does not request access to Gmail messages, contacts, Drive files, Calendar, or other Google content.</li>
@@ -42,7 +42,7 @@ const sections = [
   {
     title: "Payments and messages",
     content: <>
-      <p>M-Pesa payments are handled through Safaricom and the configured Paybill flow. The platform stores records needed to reconcile payments and manage landlord balances; it does not store your M-Pesa PIN. Rent collection is enabled only for a landlord's verified direct payment account. NyumbaPlug does not collect or hold rent.</p>
+      <p>M-Pesa payments are handled through Safaricom and the configured Paybill flow. The platform stores records needed to reconcile payments and manage landlord balances; it does not store your M-Pesa PIN. Rent collection is enabled only for a landlord's verified direct payment account. HousePlug Kenya does not collect or hold rent.</p>
       <p>SMS are sent through the configured SMS provider. We process the destination phone number, message text and delivery information to send and track requested messages. Messages sent from a landlord's wallet are also recorded against that landlord's SMS balance.</p>
     </>,
   },
@@ -78,7 +78,7 @@ const sections = [
     content: <>
       <p>You may ask us to confirm whether we process your information, provide access to it, correct inaccurate or incomplete information, explain how it is used, object to or ask us to restrict certain processing, request a copy of information you provided, request deletion where applicable, and withdraw consent where consent is the basis for processing. These requests are subject to applicable law and exceptions needed to protect other people or preserve records we are legally required or permitted to keep.</p>
       <p><strong>To request access, correction, export or deletion:</strong> email <a className="underline underline-offset-4 hover:text-bone" href="mailto:siskemejja@gmail.com">siskemejja@gmail.com</a> from the email address associated with your account, if possible. State “Privacy request” and describe the request and account email. We may ask for reasonable information to verify your identity before acting. We will acknowledge and handle the request within the period required by applicable law. Do not email passwords, M-Pesa PINs or identity-document attachments unless we provide a secure method.</p>
-      <p>To stop using Google sign-in, you can stop choosing Google and may remove the app's access from your Google Account security settings. This does not by itself delete a Rental Houses Kenya account or records already retained by the platform; contact us to request account-data deletion. You may also complain to the Office of the Data Protection Commissioner in Kenya.</p>
+      <p>To stop using Google sign-in, you can stop choosing Google and may remove the app's access from your Google Account security settings. This does not by itself delete a HousePlug Kenya account or records already retained by the platform; contact us to request account-data deletion. You may also complain to the Office of the Data Protection Commissioner in Kenya.</p>
     </>,
   },
   {
@@ -94,8 +94,8 @@ const sections = [
 export default function Privacy() {
   return (
     <article className="mx-auto grid max-w-4xl gap-5">
-      <PageHead title="Privacy Policy" sub="How Rental Houses Kenya collects, uses and protects personal information." />
-      <p className="text-sm text-graphite-400">Effective date: 25 October 2026. Public policy for Rental Houses Kenya, operated by Referraliq Solutions. Review against the live deployment, provider configurations and applicable Kenyan law before relying on it as legal advice.</p>
+      <PageHead title="Privacy Policy" sub="How HousePlug Kenya collects, uses and protects personal information." />
+      <p className="text-sm text-graphite-400">Effective date: 25 October 2026. Public policy for HousePlug Kenya, operated by Referraliq Solutions. Review against the live deployment, provider configurations and applicable Kenyan law before relying on it as legal advice.</p>
       {sections.map((section) => (
         <Panel key={section.title} className="grid gap-3 p-5 sm:p-6">
           <h2 className="text-xl">{section.title}</h2>

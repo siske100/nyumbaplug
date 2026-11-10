@@ -17,7 +17,7 @@ export default function AdminOverview() {
   const suspended = (landlords.data ?? []).filter((l) => l.state === "suspended").length;
 
   const metrics = [
-    { label: "Total properties", value: summary ? summary.totalProperties.toLocaleString("en-KE") : "—", note: "Published on the platform", icon: Building2, color: "bg-blue-100 text-blue-700" },
+    { label: "Total properties", value: summary ? summary.totalProperties.toLocaleString("en-KE") : "—", note: "Published on the platform", icon: Building2, color: "bg-emerald-100 text-emerald-700" },
     { label: "Monthly bookings", value: summary ? summary.monthlyBookings.toLocaleString("en-KE") : "—", note: "Viewing requests this month", icon: CalendarDays, color: "bg-violet-100 text-violet-700" },
     { label: "Total revenue", value: summary ? formatKes(summary.totalRevenue) : "—", note: "Subscriptions, SMS and platform fees", icon: CircleDollarSign, color: "bg-emerald-100 text-emerald-700" },
     { label: "Active marketers", value: summary ? summary.activeMarketers.toLocaleString("en-KE") : "—", note: "Activated accounts", icon: Users, color: "bg-amber-100 text-amber-700" },
@@ -58,7 +58,7 @@ export default function AdminOverview() {
               const percent = county.share;
               return <div key={county.county}>
                 <div className="mb-1.5 flex items-center justify-between gap-3 text-sm"><span className="font-medium text-slate-700">{county.county}</span><span className="text-slate-500">{county.bookings} <span className="text-xs">({percent}%)</span></span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${index === 0 ? "bg-blue-600" : "bg-blue-300"}`} style={{ width: `${percent}%` }} /></div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${index === 0 ? "bg-emerald-600" : "bg-emerald-300"}`} style={{ width: `${percent}%` }} /></div>
               </div>;
             })}
           </div>
@@ -73,8 +73,8 @@ export default function AdminOverview() {
             { to: "/admin#marketers", label: "View marketer activity", detail: `${summary?.activeMarketers ?? "—"} active accounts`, icon: Users },
             { to: "/admin/bookings", label: "Review bookings", detail: `${summary?.monthlyBookings ?? "—"} this month`, icon: CalendarDays },
             { to: "/admin#reports", label: "View reports", detail: "Bookings and county activity", icon: CircleDollarSign },
-          ].map(({ to, label, detail, icon: Icon }) => <Link key={label} to={to} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors hover:bg-blue-50">
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-blue-100 text-blue-700"><Icon className="size-4" aria-hidden /></span>
+          ].map(({ to, label, detail, icon: Icon }) => <Link key={label} to={to} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors hover:bg-emerald-50">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700"><Icon className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-800">{label}</span><span className="block text-xs text-slate-500">{detail}</span></span>
             <ArrowRight className="size-4 text-slate-400" aria-hidden />
           </Link>)}
@@ -104,8 +104,8 @@ export default function AdminOverview() {
         <Panel id="agents" className="scroll-mt-24 p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Platform operations</p><h2 className="mt-1 text-lg font-bold text-bone">Recent Activities</h2></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Live</span></div>
           <ul className="grid gap-3">
-            {recentActivity.map((item) => <li key={item.id} className="flex gap-3 border-l-2 border-blue-200 pl-3">
-              <span className="mt-1 size-2 shrink-0 rounded-full bg-blue-500" />
+            {recentActivity.map((item) => <li key={item.id} className="flex gap-3 border-l-2 border-emerald-200 pl-3">
+              <span className="mt-1 size-2 shrink-0 rounded-full bg-emerald-500" />
               <span className="min-w-0"><span className="block text-sm font-semibold text-slate-800">{item.title}</span><span className="block truncate text-xs text-slate-500">{item.detail}</span><span className="block text-[11px] text-slate-400">{fmtDate(item.at)}</span></span>
             </li>)}
             {recentActivity.length === 0 && <li className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No recent platform activity.</li>}
@@ -117,7 +117,7 @@ export default function AdminOverview() {
       <Panel className="grid gap-4 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">User help requests</p><h2 className="mt-1 text-lg font-bold text-bone">Recent support issues</h2></div>
-          <Link to="/admin/support" className="text-sm font-bold text-blue-700 hover:underline">Open support inbox <ArrowRight className="inline size-4" aria-hidden /></Link>
+          <Link to="/admin/support" className="text-sm font-bold text-emerald-700 hover:underline">Open support inbox <ArrowRight className="inline size-4" aria-hidden /></Link>
         </div>
         {support.data?.filter((request) => request.status === "open").slice(0, 5).map((request) => (
           <div key={request.id} className="grid gap-1 border-t border-slate-100 pt-3">
@@ -135,7 +135,7 @@ export default function AdminOverview() {
       <Panel id="settings" className="grid scroll-mt-24 gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
         <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Platform</p><h2 className="mt-1 text-lg font-bold text-bone">Settings</h2><p className="mt-1 text-sm text-slate-500">Manage platform settings.</p></div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/admin/celcom" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Settings</Link>
+          <Link to="/admin/celcom" className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Settings</Link>
         </div>
       </Panel>
     </div>

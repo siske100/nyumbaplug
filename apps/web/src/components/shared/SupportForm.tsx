@@ -27,7 +27,7 @@ export function SupportForm({ scope }: { scope: Role }) {
         value={message}
         onChange={(event) => { setMessage(event.target.value); setSent(false); }}
         placeholder="Tell us what happened and what you were trying to do."
-        className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-500">Your message will be sent to the admin team.</p>

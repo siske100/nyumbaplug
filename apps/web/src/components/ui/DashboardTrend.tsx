@@ -23,8 +23,8 @@ function currencyTick(value: number) {
 }
 
 export function DashboardTrend({ data, title = "Bookings and revenue", range = "Last 6 months", variant = "default" }: { data: TrendPoint[]; title?: string; range?: string; variant?: "default" | "landlord" }) {
-  const bookingsColor = variant === "landlord" ? "#f97316" : "#2563eb";
-  const revenueColor = variant === "landlord" ? "#881337" : "#10b981";
+  const bookingsColor = variant === "landlord" ? "#169b52" : "#1fbf69";
+  const revenueColor = "#06492c";
   const revenueAxisMax = Math.max(0, ...data.map((item) => item.revenue));
   const bookingsAxisMax = Math.max(0, ...data.map((item) => item.bookings));
   const revenueLine = pointsFor(data.map((item) => item.revenue), revenueAxisMax || 1);

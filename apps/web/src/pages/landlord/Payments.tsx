@@ -106,7 +106,7 @@ export default function Payments({ embedded = false }: { embedded?: boolean }) {
       {data && data.payouts.length > 0 && (
         <Panel className="p-5 sm:p-6">
           <h2 className="text-xl">Historical platform payouts</h2>
-          <p className="mt-1 text-sm text-graphite-300">These are records from the previous collection model. New rent is never collected by NyumbaPlug or placed in this payout queue.</p>
+          <p className="mt-1 text-sm text-graphite-300">These are records from the previous collection model. New rent is never collected by HousePlug Kenya or placed in this payout queue.</p>
           <ul className="mt-3 divide-y divide-white/8">{data.payouts.map((p) => <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5"><span>{fmtDate(p.at)} · {formatKes(p.amount)}</span><span className="flex items-center gap-2 text-sm text-graphite-300">{p.ref}<Chip tone={p.status === "paid" ? "ok" : "ember"}>{p.status}</Chip></span></li>)}</ul>
         </Panel>
       )}

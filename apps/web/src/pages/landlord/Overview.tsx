@@ -77,7 +77,7 @@ export default function Overview() {
       {errors.map((error, index) => <ErrorNote key={index} error={error} />)}
 
       <section
-        className="relative isolate flex min-h-40 flex-col justify-end overflow-hidden rounded-2xl bg-rose-950 px-4 py-5 text-white shadow-sm sm:min-h-48 sm:px-7 sm:py-7"
+        className="relative isolate flex min-h-40 flex-col justify-end overflow-hidden rounded-2xl bg-emerald-950 px-4 py-5 text-white shadow-sm sm:min-h-48 sm:px-7 sm:py-7"
         style={{
           backgroundImage: "linear-gradient(90deg, rgb(91 0 29 / 0.94) 0%, rgb(91 0 29 / 0.78) 44%, rgb(91 0 29 / 0.16) 100%), linear-gradient(0deg, rgb(15 23 42 / 0.25), transparent 70%), url('/apartment-building.jpg')",
           backgroundPosition: "center, center, center 56%",
@@ -146,7 +146,7 @@ export default function Overview() {
                 <p className="truncate text-xs font-extrabold text-slate-900">{house.title}</p>
                 <p className="mt-0.5 truncate text-[10px] text-slate-500">{house.town} · {house.county}</p>
                 <div className="mt-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-extrabold text-rose-800">{formatKes(house.rent)}<span className="font-medium text-slate-500"> / month</span></p>
+                  <p className="text-[11px] font-extrabold text-emerald-800">{formatKes(house.rent)}<span className="font-medium text-slate-500"> / month</span></p>
                   <span className="text-[10px] text-slate-500">{house.vacant}/{house.total} vacant</span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export default function Overview() {
                     <td className="py-2 pr-3 text-slate-600">{new Intl.DateTimeFormat("en-KE", { day: "numeric", month: "short" }).format(new Date(visit.createdAt))}</td>
                     <td className="max-w-40 truncate py-2 pr-3 font-semibold text-slate-800">{visit.houseTitle}</td>
                     <td className="max-w-36 truncate py-2 pr-3 text-slate-600">{visit.visitorName}</td>
-                    <td className="py-2"><span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${visit.status === "scheduled" || visit.status === "rescheduled" ? "bg-emerald-100 text-emerald-700" : visit.status === "done" ? "bg-slate-100 text-slate-600" : "bg-blue-100 text-blue-700"}`}>{visitStatus(visit)}</span></td>
+                    <td className="py-2"><span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${visit.status === "scheduled" || visit.status === "rescheduled" ? "bg-emerald-100 text-emerald-700" : visit.status === "done" ? "bg-slate-100 text-slate-600" : "bg-emerald-100 text-emerald-700"}`}>{visitStatus(visit)}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -183,7 +183,7 @@ export default function Overview() {
         <Panel className="grid content-start gap-2.5 bg-white p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-extrabold text-slate-900">Help & support</h2>
-            <Link to="/landlord/support" className="shrink-0 text-xs font-bold text-rose-900 hover:underline">View replies</Link>
+            <Link to="/landlord/support" className="shrink-0 text-xs font-bold text-emerald-800 hover:underline">View replies</Link>
           </div>
           <p className="text-xs text-slate-600">Paste your issue here and the admin team will review it.</p>
           <SupportForm scope="landlord" />

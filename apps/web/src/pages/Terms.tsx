@@ -6,7 +6,7 @@ const sections = [
   {
     title: "About the service",
     content: <>
-      <p>Rental Houses Kenya is operated by Referraliq Solutions. The platform helps landlords publish rental listings and manage property-related workflows, and helps prospective tenants discover listings and request viewings.</p>
+      <p>HousePlug Kenya is operated by Referraliq Solutions. The platform helps landlords publish rental listings and manage property-related workflows, and helps prospective tenants discover listings and request viewings.</p>
       <p>The platform is a technology service. Unless a separate written agreement says otherwise, it is not a party to a tenancy, does not own or inspect listed properties, and does not guarantee that a listing, landlord, tenant, viewing or payment arrangement is suitable or accurate.</p>
     </>,
   },
@@ -34,7 +34,7 @@ const sections = [
   {
     title: "Payments, subscriptions and SMS credit",
     content: <>
-      <p>Payments are processed or recorded through the configured M-Pesa Daraja flows. Rent payments are enabled only when the landlord has connected a verified payment account that settles directly to the landlord. NyumbaPlug does not collect, hold, or pay out rent. If no verified direct payment method is active, the tenant payment option remains unavailable.</p>
+      <p>Payments are processed or recorded through the configured M-Pesa Daraja flows. Rent payments are enabled only when the landlord has connected a verified payment account that settles directly to the landlord. HousePlug Kenya does not collect, hold, or pay out rent. If no verified direct payment method is active, the tenant payment option remains unavailable.</p>
       <p>Landlord subscriptions and SMS-wallet recharges are separate platform purchases. Subscription prices and SMS segment prices are shown in the service before payment and may change for future purchases with notice. SMS wallet balances are prepaid credits for eligible platform messages, not cash withdrawable from the wallet. Where a provider rejects a charged message, the system may refund the corresponding wallet charge as shown in the product.</p>
       <p>Except where required by law or stated in the service, completed digital purchases are not refundable merely because you change your mind. This does not limit rights that cannot lawfully be excluded.</p>
     </>,
@@ -66,7 +66,7 @@ const sections = [
 export default function Terms() {
   return (
     <article className="mx-auto grid max-w-4xl gap-5">
-      <PageHead title="Terms of Service" sub="Rules for using Rental Houses Kenya." />
+      <PageHead title="Terms of Service" sub="Rules for using HousePlug Kenya." />
       <p className="text-sm text-graphite-400">Effective date: 25 October 2026. This draft should be reviewed by a Kenyan lawyer before production use.</p>
       {sections.map((section) => (
         <Panel key={section.title} className="grid gap-3 p-5 sm:p-6">

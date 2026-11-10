@@ -4,7 +4,7 @@ Everything below needs a live account, so it could not be proved in the build en
 
 ## Must confirm with the providers
 - [ ] **Celcom:** the real web address, field names and success response. Edit only `supabase/functions/_shared/sms.ts`. Send yourself one SMS.
-- [ ] **Safaricom Daraja:** apply for live access to each landlord-owned Paybill integration. In the sandbox, test STK prompt, success callback, cancelled prompt, timeout, landlord-scoped C2B validation, and wrong amounts. The platform Paybill is only for NyumbaPlug purchases.
+- [ ] **Safaricom Daraja:** apply for live access to each landlord-owned Paybill integration. In the sandbox, test STK prompt, success callback, cancelled prompt, timeout, landlord-scoped C2B validation, and wrong amounts. The platform Paybill is only for HousePlug Kenya purchases.
 - [ ] **Bank / aggregator settlement:** do not enable until the provider confirms in writing that the integration can collect for multiple independent landlords and settle each tenant payment directly to the correct landlord bank account.
 - [ ] Confirm the **C2B register-URL** endpoint version and the **STK status check** behaviour against Safaricom's current documentation (`functions/_shared/daraja.ts`).
 - [ ] Ask Safaricom to enable **external validation** on the Paybill, so wrong manual amounts are refused up front. Without it, wrong amounts are still held safely, not credited.
