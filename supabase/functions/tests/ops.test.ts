@@ -428,17 +428,15 @@ Deno.test("viewing request: valid contact details and preferences are submitted 
 
 // ---------------- invites ----------------
 const info = { kind: "tenant", landlord_name: "Wanjiku Kamau", invitee_name: "Brian Otieno", invitee_phone: "0722111222", house_title: "Bedsitter B4", unit_label: "B4" };
-Deno.test("invite: the link carries a secret that is stored only as a hash, and the landlord can share it if the SMS cannot be sent", async () => {
-  const s = sms(); const f = fake({ create_invite: () => ({ data: "2026-10-23T00:00:00Z" }), invite_lookup: () => ({ data: info }), sms_charge: () => ({ data: "m" }), sms_message_status: () => ({ data: "queued" }) });
-  const d = { rpc: f.rpc, sms: s.provider, appOrigin: "https://app.example.ke", pepper: "p" };
+Deno.test("invite: the link carries a secret that is stored only as a hash", async () => {
+  const f = fake({ create_invite: () => ({ data: "2026-10-23T00:00:00Z" }) });
+  const d = { rpc: f.rpc, appOrigin: "https://app.example.ke", pepper: "p" };
   const out = await createInvite(d, { landlordId: "l", kind: "tenant", tenancyId: "t1" });
-  ok(out.link.startsWith("https://app.example.ke/invite/")); eq(out.smsSent, true);
+  ok(out.link.startsWith("https://app.example.ke/invite/"));
+  eq(out.expiresAt, "2026-10-23T00:00:00Z");
   const token = out.link.split("/").pop()!;
   ok(!JSON.stringify(f.calls.filter((c) => c.fn === "create_invite")).includes(token), "the raw secret must never reach the database");
-  ok(s.sent[0]!.text.includes(token));
-  const paused = fake({ create_invite: () => ({ data: "x" }), invite_lookup: () => ({ data: info }), sms_charge: () => ({ data: "m" }), sms_message_status: () => ({ data: "paused_insufficient_balance" }) });
-  const out2 = await createInvite({ ...d, rpc: paused.rpc }, { landlordId: "l", kind: "tenant", tenancyId: "t1" });
-  eq(out2.smsSent, false); ok(out2.link.length > 40);
+  ok(!f.calls.some((c) => c.fn === "invite_lookup"), "invite creation does not look up the tenant to send an SMS");
   await rejectsWith(() => createInvite(d, { landlordId: "l", kind: "caretaker" }), 400, /Choose tenant/);
   await rejectsWith(() => createInvite(d, { landlordId: "l", kind: "admin" }), 400);
   await rejectsWith(() => createInvite({ ...d, rpc: fake({ create_invite: () => ({ error: { code: "P0001", message: "This tenant has already joined" } }) }).rpc }, { landlordId: "l", kind: "tenant", tenancyId: "t" }), 400, /already joined/);

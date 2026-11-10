@@ -158,7 +158,7 @@ export interface TenancyRow {
 }
 export interface TenantInput { houseId: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string; rent: number; deposit: number; dueDay: number }
 export interface TenancyPatch { agreementSignedOn?: string | null; electricityEnabled?: boolean; kplcPaybill?: string | null; meterNumber?: string | null }
-export interface InviteResult { link: string; smsSent: boolean; expiresAt: string }
+export interface InviteResult { link: string; expiresAt: string }
 export interface VisitItem {
   id: string; visitorName: string; visitorPhone: string; houseTitle: string; preferredDate: string; timeWindow: string;
   scheduledDate: string | null; scheduledWindow: string | null; status: VisitStatus; reschedules: number; createdAt: string;

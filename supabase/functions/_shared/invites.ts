@@ -1,9 +1,8 @@
 // Inviting tenants and accepting an invite.
 import { fromDb, HttpError, type Rpc } from "./ops.ts";
-import { sendLandlordSms, type SmsDeps } from "./messaging.ts";
-import { firstName, hmacHex, randomToken } from "./text.ts";
+import { hmacHex, randomToken } from "./text.ts";
 
-export interface InviteDeps extends SmsDeps { appOrigin: string; pepper: string }
+export interface InviteDeps { rpc: Rpc; appOrigin: string; pepper: string }
 
 export async function createInvite(d: InviteDeps, i: { landlordId: string; kind: unknown; tenancyId?: unknown }) {
   if (i.kind !== "tenant") throw new HttpError(400, "Choose tenant");
@@ -14,13 +13,7 @@ export async function createInvite(d: InviteDeps, i: { landlordId: string; kind:
   });
   if (made.error) throw fromDb(made.error);
   const link = `${d.appOrigin}/invite/${token}`;
-  const info = (await d.rpc("invite_lookup", { p_hash: hash })).data as { invitee_name: string | null; invitee_phone: string; landlord_name: string | null; house_title: string } | null;
-  let smsSent = false;
-  if (info) {
-    const text = `${firstName(info.invitee_name)}, ${firstName(info.landlord_name)} invited you to join HousePlug Kenya for ${info.house_title}. Open: ${link}`;
-    smsSent = (await sendLandlordSms(d, { landlordId: i.landlordId, template: "broadcast", phone: info.invitee_phone, text })) === "sent";
-  }
-  return { link, expiresAt: made.data, smsSent };      // if the SMS could not be sent the landlord can share the link, for example on WhatsApp
+  return { link, expiresAt: made.data };
 }
 
 const mask = (p: string) => `${p.slice(0, 4)} ••• ${p.slice(-3)}`;

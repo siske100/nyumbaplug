@@ -73,6 +73,25 @@ function Detail({ t }: { t: TenancyRow }) {
   const [msg, setMsg] = useState<string>();
 
   const openAgreement = async () => { if (t.agreementPath) window.open(await api.landlord.fileUrl("agreements", t.agreementPath), "_blank", "noopener,noreferrer"); };
+  const sendInvite = () => {
+    const whatsapp = window.open("about:blank", "_blank");
+    invite.mutate(undefined, {
+      onSuccess: (result) => {
+        setLink(result);
+        setCopied(false);
+        if (!whatsapp) return;
+        const digits = t.phone.replace(/\D/g, "");
+        const phone = digits.startsWith("254") ? digits : `254${digits.replace(/^0/, "")}`;
+        const text = `Hi ${t.name}, I’ve added you as a tenant for ${t.houseTitle}, unit ${t.unit}. Set up your HousePlug tenant login here: ${result.link}`;
+        whatsapp.opener = null;
+        whatsapp.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+      },
+      onError: () => whatsapp?.close(),
+    });
+  };
+  const inviteText = link && `Hi ${t.name}, I’ve added you as a tenant for ${t.houseTitle}, unit ${t.unit}. Set up your HousePlug tenant login here: ${link.link}`;
+  const whatsappPhone = t.phone.replace(/\D/g, "").replace(/^0/, "254");
+  const whatsappUrl = inviteText && `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(inviteText)}`;
   const agreement = t.agreementPath ? "Agreement uploaded" : "No agreement uploaded";
 
   return (
@@ -87,15 +106,18 @@ function Detail({ t }: { t: TenancyRow }) {
       {t.status !== "ended" && !t.joined && (
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" loading={invite.isPending} onClick={() => invite.mutate(undefined, { onSuccess: setLink })}>Send login invite</Button>
-            <span className="text-sm text-graphite-300">Texts a link to the tenant. Costs one SMS from your wallet.</span>
+            <Button size="sm" loading={invite.isPending} onClick={sendInvite}>Send WhatsApp invite</Button>
+            <span className="text-sm text-graphite-300">Opens a WhatsApp message addressed to the tenant.</span>
           </div>
           <ErrorNote error={invite.error} />
           {link && (
             <div className="rounded-xl border border-white/10 bg-white/4 p-3 text-sm">
-              <p>{link.smsSent ? "Invite sent by SMS. You can also share this link:" : "The SMS could not be sent (check your SMS balance). Share this link yourself, for example on WhatsApp:"}</p>
+              <p>Review the WhatsApp message and press Send. You can also share this invite link:</p>
               <p className="mt-1 break-all text-ember-300">{link.link}</p>
-              <Button variant="glass" size="sm" className="mt-2" onClick={() => { void navigator.clipboard.writeText(link.link); setCopied(true); }}>{copied ? "Copied" : "Copy link"}</Button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {whatsappUrl && <a className="inline-flex items-center justify-center rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-bone hover:bg-white/8" href={whatsappUrl} target="_blank" rel="noopener noreferrer">Open WhatsApp</a>}
+                <Button variant="glass" size="sm" onClick={() => { void navigator.clipboard.writeText(link.link); setCopied(true); }}>{copied ? "Copied" : "Copy link"}</Button>
+              </div>
             </div>
           )}
         </div>
@@ -147,7 +169,7 @@ export default function Tenants() {
       {adding && <AddTenant onDone={() => setAdding(false)} />}
       <ErrorNote error={error} />
       {isPending && <div className="skeleton h-24" />}
-      {data && list.length === 0 && !adding && <Panel className="p-4"><ToLet title="No tenants yet" note="Add a tenant when someone moves in. They get a login by SMS and pay rent with M-Pesa." /></Panel>}
+      {data && list.length === 0 && !adding && <Panel className="p-4"><ToLet title="No tenants yet" note="Add a tenant when someone moves in. They get a login invite on WhatsApp and pay rent with M-Pesa." /></Panel>}
       <Panel className="divide-y divide-white/8">
         {list.map((t) => (
           <div key={t.id}>
