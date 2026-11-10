@@ -20,4 +20,4 @@ export async function hashCode(code: string, userId: string, pepper: string): Pr
 export const isSixDigits = (v: unknown): v is string => typeof v === "string" && /^\d{6}$/.test(v);
 
 /** One SMS segment (under 160 characters) so each code costs a single segment. */
-export const smsText = (code: string) => `Your Rental Houses code is ${code}. It expires in 5 minutes. Do not share it.`;
+export const smsText = (code: string) => `Your HousePlug Kenya code is ${code}. It expires in 5 minutes. Do not share it.`;

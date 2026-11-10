@@ -72,8 +72,8 @@ const WHEN: Record<string, string> = { "7d": "in 7 days", "4d": "in 4 days", "2d
 export function reminderSms(name: string, balance: number, trigger: string) {
   const n = firstName(name);
   return trigger === "overdue"
-    ? `Hello ${n}, your rent of KES ${balance} is overdue. Please pay in the Rental Houses app.`
-    : `Hello ${n}, your rent of KES ${balance} is due ${WHEN[trigger] ?? "soon"}. Pay in the Rental Houses app.`;
+    ? `Hello ${n}, your rent of KES ${balance} is overdue. Please pay in the HousePlug Kenya app.`
+    : `Hello ${n}, your rent of KES ${balance} is due ${WHEN[trigger] ?? "soon"}. Pay in the HousePlug Kenya app.`;
 }
 
 export async function runReminders(d: SmsDeps, isoDate: string) {

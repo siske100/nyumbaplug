@@ -1,3 +1,4 @@
+import { CreditCard } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/api";
 import type { LedgerRow } from "@/api/types";
@@ -43,10 +44,12 @@ export default function Payments({ embedded = false }: { embedded?: boolean }) {
     <div id="ledger" className="grid gap-4">
       {!embedded && <PageHead title="Payments" sub="Every shilling, recorded. Entries are never edited: a mistake is fixed with a reversal." />}
       <ErrorNote error={error} />
+      <div className="landlord-payment-summary">
       <Stats loading={isPending} items={[
         { label: "Received this month", value: formatKes(month), tone: "ok" }, { label: "Still owed", value: formatKes(data?.owed ?? 0), tone: (data?.owed ?? 0) > 0 ? "warn" : undefined },
         { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : data?.mode === "bank_paybill" ? "Your bank account" : "Not configured", note: data?.mode === "own" ? "direct landlord settlement" : data?.mode === "bank_paybill" ? "manual transfers need your confirmation" : "choose a rent payment method in setup" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
       ]} />
+      </div>
 
       {data && data.manualClaims.length > 0 && (
         <Panel className="grid gap-3 p-5 sm:p-6">
@@ -111,14 +114,23 @@ export default function Payments({ embedded = false }: { embedded?: boolean }) {
         </Panel>
       )}
 
-      <Panel className="p-5 sm:p-6">
-        <h2 className="text-xl">Ledger</h2>
+      <Panel className="landlord-payment-ledger min-w-0 p-4 sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-900"><CreditCard className="size-5" aria-hidden /></span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Rent ledger</h2>
+            <p className="text-xs text-slate-500">Confirmed receipts and adjustments</p>
+          </div>
+        </div>
         {data?.ledger.length === 0 && <ToLet title="No payments yet" note="Rent appears here after Safaricom confirms a payment or you confirm a manual bank transfer." />}
-        <ul className="mt-3 divide-y divide-white/8">
+        <ul className="mt-3 divide-y divide-slate-100">
           {data?.ledger.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <div><p className="font-medium">{l.tenantName} <span className="text-graphite-400">unit {l.unit}</span></p><p className="text-sm text-graphite-300">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : l.method === "bank_paybill" ? "Bank Paybill (historical)" : l.method === "manual_transfer" ? "Manual bank transfer" : l.method === "paystack" ? "External checkout (historical)" : "Reversal"} · {l.ref}</p></div>
-              <div className="flex flex-wrap items-center gap-2">{l.reversed && <Chip>Reversed</Chip>}{l.kind === "reversal" && <Chip tone="danger">Reversal</Chip>}<span className={l.kind === "reversal" ? "text-danger" : ""}>{l.kind === "reversal" ? "−" : ""}{formatKes(l.amount)}</span><Reverse row={l} /></div>
+            <li key={l.id} className="flex min-w-0 flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">{l.tenantName} <span className="text-slate-500">· unit {l.unit}</span></p>
+                <p className="break-words text-xs leading-5 text-slate-500 sm:text-sm">{fmtDate(l.at)} · {l.method === "stk_push" ? "M-Pesa prompt" : l.method === "c2b" ? "Paybill" : l.method === "bank_paybill" ? "Bank Paybill (historical)" : l.method === "manual_transfer" ? "Manual bank transfer" : l.method === "paystack" ? "External checkout (historical)" : "Reversal"} · {l.ref}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">{l.reversed && <Chip>Reversed</Chip>}{l.kind === "reversal" && <Chip tone="danger">Reversal</Chip>}<span className={`font-bold ${l.kind === "reversal" ? "text-danger" : "text-slate-900"}`}>{l.kind === "reversal" ? "−" : ""}{formatKes(l.amount)}</span><Reverse row={l} /></div>
             </li>
           ))}
         </ul>

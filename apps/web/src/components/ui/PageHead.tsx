@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 export function PageHead({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3">
-      <div><h1 className="text-3xl">{title}</h1>{sub && <p className="mt-1 max-w-2xl text-graphite-300">{sub}</p>}</div>
+    <header className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:items-end">
+      <div className="min-w-0"><h1 className="text-2xl sm:text-3xl">{title}</h1>{sub && <p className="mt-1 max-w-2xl text-sm text-graphite-300 sm:text-base">{sub}</p>}</div>
       {action}
     </header>
   );

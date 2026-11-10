@@ -17,7 +17,7 @@ export async function createInvite(d: InviteDeps, i: { landlordId: string; kind:
   const info = (await d.rpc("invite_lookup", { p_hash: hash })).data as { invitee_name: string | null; invitee_phone: string; landlord_name: string | null; house_title: string } | null;
   let smsSent = false;
   if (info) {
-    const text = `${firstName(info.invitee_name)}, ${firstName(info.landlord_name)} invited you to join Rental Houses for ${info.house_title}. Open: ${link}`;
+    const text = `${firstName(info.invitee_name)}, ${firstName(info.landlord_name)} invited you to join HousePlug Kenya for ${info.house_title}. Open: ${link}`;
     smsSent = (await sendLandlordSms(d, { landlordId: i.landlordId, template: "broadcast", phone: info.invitee_phone, text })) === "sent";
   }
   return { link, expiresAt: made.data, smsSent };      // if the SMS could not be sent the landlord can share the link, for example on WhatsApp

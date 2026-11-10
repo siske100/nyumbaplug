@@ -8,10 +8,10 @@ export function Stats({ items, loading }: { items: StatItem[]; loading?: boolean
       {loading
         ? [0, 1, 2, 3].map((i) => <div key={i} className="skeleton m-4 h-16" />)
         : items.map((s) => (
-            <div key={s.label} className="p-5">
+            <div key={s.label} className="min-w-0 p-3 sm:p-5">
               <p className="text-sm text-graphite-300">{s.label}</p>
-              <p className={`mt-1 font-display text-3xl ${s.tone === "warn" ? "text-ember-300" : s.tone === "ok" ? "text-ok" : ""}`}>{s.value}</p>
-              {s.note && <p className="mt-0.5 text-sm text-graphite-400">{s.note}</p>}
+              <p className={`mt-1 break-words font-display text-2xl sm:text-3xl ${s.tone === "warn" ? "text-ember-300" : s.tone === "ok" ? "text-ok" : ""}`}>{s.value}</p>
+              {s.note && <p className="mt-0.5 break-words text-xs text-graphite-400 sm:text-sm">{s.note}</p>}
             </div>
           ))}
     </Panel>

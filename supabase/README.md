@@ -2,7 +2,7 @@
 
 Project **hostel-new**, ref `gzhyorqbpvpoevaeiuvz`.
 
-Apply all migrations in filename order through `0030_direct_landlord_rent_only.sql`, then run `seed/seed.sql`, then `cron.sql`. Migrations `0018` and `0019` are historical; migration `0024` disables the retired Paystack route. Migration `0030` disables platform/bank rent collection, requires a connected landlord-owned Daraja Paybill for tenant rent, and preserves the platform Paybill for NyumbaPlug subscriptions and SMS credit only. If the old Edge Functions were deployed, also delete `paystack-connect`, `paystack-init`, `paystack-verify`, and `paystack-webhook` from Supabase Dashboard > Edge Functions; removing local source files does not remove existing deployments. The caretaker migration removes caretaker access and invites while preserving old authentication profile rows.
+Apply the migrations in filename order, then run `seed/seed.sql` and `cron.sql`. Migrations `0018` and `0019` are historical; migration `0024` disables the retired Paystack route. Migration `0030` disables platform/bank rent collection, requires a connected landlord-owned Daraja Paybill for tenant rent, and preserves the platform Paybill for HousePlug Kenya subscriptions and SMS credit only. If the old Edge Functions were deployed, also delete `paystack-connect`, `paystack-init`, `paystack-verify`, and `paystack-webhook` from Supabase Dashboard > Edge Functions; removing local source files does not remove existing deployments. The caretaker migration removes caretaker access and invites while preserving old authentication profile rows. Review every pending migration before applying it to a hosted project.
 
 ## Set up, in this order
 1. **Link and apply the database**

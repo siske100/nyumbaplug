@@ -32,12 +32,12 @@ export default function AdminOverview() {
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 5);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 min-w-0 gap-4">
       <ErrorNote error={dashboard.error ?? landlords.error ?? payments.error ?? celcom.error ?? support.error} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map(({ label, value, note, icon: Icon, color }, index) => (
-          <Panel key={label} id={index === 0 ? "properties" : undefined} className="scroll-mt-24 p-4 sm:p-5">
+          <Panel key={label} id={index === 0 ? "properties" : undefined} className="min-w-0 scroll-mt-24 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3"><p className="text-sm text-graphite-300">{label}</p><span className={`grid size-10 shrink-0 place-items-center rounded-xl ${color}`}><Icon className="size-5" aria-hidden /></span></div>
             <p className="mt-3 text-2xl font-extrabold text-slate-900 sm:text-3xl">{value}</p>
             <p className="mt-1 text-xs text-graphite-400">{note}</p>
@@ -45,11 +45,11 @@ export default function AdminOverview() {
         ))}
       </div>
 
-      <div id="reports" className="grid scroll-mt-24 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.8fr)]">
-        <Panel className="p-4 sm:p-6">
+      <div id="reports" className="grid grid-cols-1 min-w-0 scroll-mt-24 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.8fr)]">
+        <Panel className="min-w-0 p-4 sm:p-6">
           <DashboardTrend data={summary?.trend.map(({ month, ...point }) => ({ label: month, ...point })) ?? []} title="Bookings and platform revenue" range="Last 30 days" />
         </Panel>
-        <Panel className="p-4 sm:p-5">
+        <Panel className="min-w-0 p-4 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Bookings by county</p>
           <h2 className="mt-1 text-lg font-bold text-bone">Top viewing locations</h2>
           <div className="mt-5 grid gap-4">
@@ -65,8 +65,8 @@ export default function AdminOverview() {
         </Panel>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.8fr)]">
-        <Panel className="grid content-start gap-2 p-4 sm:p-5">
+      <div className="grid grid-cols-1 min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.8fr)]">
+        <Panel className="grid min-w-0 content-start gap-2 p-4 sm:p-5">
           <div className="mb-1"><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Quick actions</p><h2 className="mt-1 text-lg font-bold text-bone">Manage platform</h2></div>
           {[
             { to: "/admin/documents", label: "Review verification", detail: `${kyc.data?.length ?? "—"} landlords pending`, icon: FileCheck2 },
@@ -85,8 +85,8 @@ export default function AdminOverview() {
         </Panel>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.8fr)]">
-        <Panel id="marketers" className="scroll-mt-24 p-4 sm:p-5">
+      <div className="grid grid-cols-1 min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.8fr)]">
+        <Panel id="marketers" className="min-w-0 scroll-mt-24 p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Marketplace performance</p><h2 className="mt-1 text-lg font-bold text-bone">Top Performing Marketers</h2></div><span className="text-xs text-slate-500">Top 5 by confirmed viewings</span></div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[30rem] text-left text-sm">
@@ -101,7 +101,7 @@ export default function AdminOverview() {
             </table>
           </div>
         </Panel>
-        <Panel id="agents" className="scroll-mt-24 p-4 sm:p-5">
+        <Panel id="agents" className="min-w-0 scroll-mt-24 p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">Platform operations</p><h2 className="mt-1 text-lg font-bold text-bone">Recent Activities</h2></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Live</span></div>
           <ul className="grid gap-3">
             {recentActivity.map((item) => <li key={item.id} className="flex gap-3 border-l-2 border-emerald-200 pl-3">
@@ -114,7 +114,7 @@ export default function AdminOverview() {
         </Panel>
       </div>
 
-      <Panel className="grid gap-4 p-4 sm:p-5">
+      <Panel className="grid grid-cols-1 min-w-0 gap-4 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">User help requests</p><h2 className="mt-1 text-lg font-bold text-bone">Recent support issues</h2></div>
           <Link to="/admin/support" className="text-sm font-bold text-emerald-700 hover:underline">Open support inbox <ArrowRight className="inline size-4" aria-hidden /></Link>
@@ -126,7 +126,7 @@ export default function AdminOverview() {
           </div>
         ))}
         {support.data?.filter((request) => request.status === "open").length === 0 && <p className="text-sm text-slate-500">No open support issues.</p>}
-        <div className="border-t border-slate-100 pt-4">
+        <div className="min-w-0 border-t border-slate-100 pt-4">
           <h3 className="mb-3 text-sm font-bold text-slate-800">Submit an issue</h3>
           <SupportForm scope="admin" />
         </div>
