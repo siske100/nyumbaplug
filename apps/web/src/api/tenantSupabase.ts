@@ -24,7 +24,7 @@ export const tenantApi: TenantApi = {
     if (route.error) throw dbError(route.error);
     if (bank.error) throw dbError(bank.error);
     if (claims.error) throw dbError(claims.error);
-    if (route.data !== null && route.data !== "own" && route.data !== "bank_paybill") throw new ApiError(500, "Could not load your landlord's direct payment option");
+    if (route.data !== null && route.data !== "platform" && route.data !== "bank_paybill") throw new ApiError(500, "Could not load your landlord's rent payment option");
     const att = a.data as Row | null;
     const manualBank = ((bank.data ?? []) as Row[])[0];
     return {
@@ -33,7 +33,7 @@ export const tenantApi: TenantApi = {
         agreementSignedOn: t.agreement_signed_on ?? null, electricityEnabled: Boolean(t.electricity_enabled), kplcPaybill: t.kplc_paybill ?? null, meterNumber: t.meter_number ?? null,
         emergencyName: t.emergency_name, emergencyPhone: t.emergency_phone, emergencyRelationship: t.emergency_relationship,
       },
-      paymentMode: route.data === "own" || route.data === "bank_paybill" ? route.data : "unavailable",
+      paymentMode: route.data === "platform" || route.data === "bank_paybill" ? route.data : "unavailable",
       manualBank: manualBank ? {
         bankName: manualBank.bank_name as string,
         accountNumber: manualBank.account_number as string,
@@ -48,7 +48,7 @@ export const tenantApi: TenantApi = {
       lastAttempt: att ? { id: att.id as string, status: att.status as string, at: att.created_at as string } : null,
     };
   },
-  pay: () => callFunction("daraja-stk"),
+  pay: (amount) => callFunction("daraja-stk", { amount }),
   async submitManualRentPayment(amount, transactionMessage) {
     const { error } = await supabase.rpc("submit_manual_rent_payment", {
       p_amount: amount, p_message: transactionMessage,

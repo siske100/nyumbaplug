@@ -313,7 +313,7 @@ describe("money", () => {
     assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 1);
     await as(db, user(w.la), "select set_payment_mode('own')");
   });
-  it("manual claims cannot be confirmed after the outstanding balance changes", async () => {
+  it("manual claims remain valid when the balance changes, as long as the advance limit allows them", async () => {
     const t = await tenancy();
     const tenantId = await mkUser(db, "manual-balance@x.ke", { app: { invited_role: "tenant" } });
     await sql(db, "update tenancies set tenant_user_id=$1 where id=$2", [tenantId, t.id]);
@@ -323,10 +323,9 @@ describe("money", () => {
     const [claim] = await as(db, user(tenantId),
       "select submit_manual_rent_payment(6500,'Bank transfer confirmation message from the bank') id");
     await sql(db, "insert into charges(tenancy_id,landlord_id,period_year,period_month,amount) values ($1,$2,2026,11,1000)", [t.id, w.la]);
-    await rejects(as(db, user(w.la), "select review_manual_rent_payment($1,true)", [claim.id]), /outstanding balance changed/);
-    assert.equal((await sql(db, "select status from manual_rent_payment_claims where id=$1", [claim.id]))[0].status, "pending");
-    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 0);
-    await as(db, user(w.la), "select review_manual_rent_payment($1,false)", [claim.id]);
-    await as(db, user(w.la), "select set_payment_mode('own')");
+    await as(db, user(w.la), "select review_manual_rent_payment($1,true)", [claim.id]);
+    assert.equal((await sql(db, "select status from manual_rent_payment_claims where id=$1", [claim.id]))[0].status, "received");
+    assert.equal((await sql(db, "select count(*)::int n from ledger_entries where tenancy_id=$1", [t.id]))[0].n, 1);
+    assert.equal(await balance(t.id), 1000);
   });
 });

@@ -253,7 +253,7 @@ export interface TenantHome {
 }
 export interface TenantApi {
   home(): Promise<TenantHome | null>;
-  pay(): Promise<{ message: string; amount: number }>;
+  pay(amount: number): Promise<{ message: string; amount: number }>;
   submitManualRentPayment(amount: number, transactionMessage: string): Promise<void>;
   complaints(): Promise<ComplaintItem[]>;
   newComplaint(tenancyId: string, category: string, title: string, body: string): Promise<void>;

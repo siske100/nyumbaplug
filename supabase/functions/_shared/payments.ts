@@ -45,28 +45,24 @@ async function sendPrompt(d: PayDeps, kind: "tenant" | "platform", attemptId: st
   }
 }
 
-/** A tenant pays the full balance. The database decides the amount; the browser only says "pay". */
+/** A tenant can pay any positive amount, up to their outstanding balance plus twelve months of rent. */
 export async function tenantPay(d: PayDeps, i: {
-  tenancyId: string; landlordId: string; tenancyCode: string; phone: string; paymentMode?: string | null;
+  tenancyId: string; landlordId: string; tenancyCode: string; phone: string; amount: number; paymentMode?: string | null;
 }) {
-  const bal = await d.rpc("current_balance", { p_tenancy: i.tenancyId });
-  if (bal.error) throw fromDb(bal.error);
-  if (typeof bal.data !== "number" || bal.data <= 0) throw new HttpError(400, "Nothing to pay");
+  if (!Number.isInteger(i.amount) || i.amount <= 0) throw new HttpError(400, "Enter a whole number of shillings greater than zero");
 
-  if (i.paymentMode && i.paymentMode !== "own") {
-    throw new HttpError(409, "This rent payment method is not enabled for direct landlord settlement.");
+  if (i.paymentMode && i.paymentMode !== "platform") {
+    throw new HttpError(409, "This rent payment method is not enabled for M-Pesa rent payments.");
   }
 
-  const started = await d.rpc("start_payment_attempt", { p_tenancy: i.tenancyId, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(), p_merchant: null });
+  const started = await d.rpc("start_tenant_payment_attempt", {
+    p_tenancy: i.tenancyId, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(),
+    p_merchant: null, p_amount: i.amount,
+  });
   if (started.error) throw fromDb(started.error);
   const attemptId = started.data as string;
-  let resolved;
-  try {
-    resolved = await resolveCreds(d, i.landlordId);
-  }
-  catch (e) { await d.rpc("fail_attempt_by_id", { p_kind: "tenant", p_attempt: attemptId, p_desc: "payment connection unavailable" }); throw e; }
-  await sendPrompt(d, "tenant", attemptId, resolved.creds, resolved.token, { amount: bal.data, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
-  return { amount: bal.data, message: "Check your phone and enter your M-Pesa PIN." };
+  await sendPrompt(d, "tenant", attemptId, d.env.platform, d.env.platformToken, { amount: i.amount, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
+  return { amount: i.amount, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
 /** Legacy bank-account verification only. This does not enable bank Paybill as a tenant rent route. */
@@ -187,9 +183,7 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
   const bankShortcode = look.kind === "tenant" ? look.bank_paybill_shortcode : null;
   // Legacy bank-Paybill rent attempts are deliberately non-settleable after direct-only cutover.
   if (bankShortcode) return ACK;
-  const resolved = look.kind === "platform"
-    ? { creds: d.env.platform, token: d.env.platformToken }
-    : await resolveCreds(d, look.landlord_id);
+  const resolved = { creds: d.env.platform, token: d.env.platformToken };
   if (!safeEqual(token, resolved.token)) throw new HttpError(403, "Not allowed");
 
   if (cb.resultCode !== 0) {
@@ -291,8 +285,7 @@ export async function reconcilePending(d: PayDeps) {
         continue;
       }
       const creds = a.kind === "platform" ? d.env.platform
-        : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode)
-          : (await resolveCreds(d, a.landlord_id)).creds;
+        : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode) : d.env.platform;
       const q = await d.daraja.stkQuery(creds, a.checkout);
       if (q.resultCode === -1) { out.waiting++; continue; }
       if (q.resultCode !== 0) {

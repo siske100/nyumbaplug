@@ -307,6 +307,7 @@ describe("payment plumbing", () => {
   let db, w, hBig, n = 0;
   before(async () => {
     db = await freshDb(); w = await buildWorld(db);
+    await sql(db, "insert into payout_destinations(landlord_id,kind,destination) values ($1,'mpesa_phone','0712345678'),($2,'mpesa_phone','0712345679')", [w.la, w.lb]);
     hBig = (await sql(db, `insert into houses(landlord_id,title,county_id,town_id,house_type,rent_amount,deposit_amount,total_units,vacant_units)
       values ($1,'Big',39,(select id from towns where name='Bungoma Town'),'Bedsitter',6500,6500,50,50) returning id`, [w.la]))[0].id;
   });
@@ -329,15 +330,42 @@ describe("payment plumbing", () => {
     assert.deepEqual({ kind: look.kind, landlord: look.landlord_id, amount: look.amount }, { kind: "tenant", landlord: w.la, amount: 6500 });
     assert.equal((await as(db, server, "select attempt_lookup('nope') l"))[0].l, null);
   });
+  it("tenant payments can be partial or up to twelve months ahead, with the advance recorded as rent credit", async () => {
+    const t = await tenancy();
+    const attempt = (await as(db, server,
+      "select start_tenant_payment_attempt($1,'0712345678',$2,null,84500) id", [t.id, "pending-advance-" + n]))[0].id;
+    await as(db, server, "select confirm_payment($1,'ADVANCE123',84500,'0712345678')", ["pending-advance-" + n]);
+    assert.equal((await one(db, "select current_balance($1) balance", [t.id])).balance, -78000);
+    await rejects(as(db, server,
+      "select start_tenant_payment_attempt($1,'0712345678',$2,null,1)", [t.id, "pending-over-cap-" + n]),
+      /twelve months of rent/);
+
+    const partial = await tenancy();
+    const partialAttempt = (await as(db, server,
+      "select start_tenant_payment_attempt($1,'0712345678',$2,null,2500) id", [partial.id, "pending-partial-" + n]))[0].id;
+    assert.ok(partialAttempt);
+  });
+  it("manual bank claims can also be paid ahead and only become rent credit after landlord confirmation", async () => {
+    const t = await tenancy();
+    const tenantId = await mkUser(db, "advance-tenant@x.ke", { app: { invited_role: "tenant" } });
+    const bankId = (await one(db, "select id from banks where active limit 1")).id;
+    await sql(db, "update tenancies set tenant_user_id=$2 where id=$1", [t.id, tenantId]);
+    await sql(db, "update payment_accounts set mode='bank_paybill' where landlord_id=$1", [w.la]);
+    await sql(db,
+      "insert into landlord_bank_accounts(landlord_id,bank_id,account_number,account_name) values ($1,$2,'123456789','Landlord A')",
+      [w.la, bankId]);
+    const claim = (await as(db, user(tenantId),
+      "select submit_manual_rent_payment(84500,'Bank transfer confirmation reference ABC12345') id"))[0].id;
+    await as(db, user(w.la), "select review_manual_rent_payment($1,true)", [claim]);
+    assert.equal((await one(db, "select current_balance($1) balance", [t.id])).balance, -78000);
+  });
   it("one attempt can never be credited twice, even with a different receipt number", async () => {
     const t = await tenancy();
-    await sql(db, "update payment_accounts set mode='own', shortcode='123456', shortcode_kind='paybill', status='connected', credentials_ciphertext='\\x01'::bytea where landlord_id=$1", [w.la]);
     const a = (await as(db, server, "select start_payment_attempt($1,'0712345678','ws_CO_TWICE','mr') id", [t.id]))[0].id;
     const first = (await as(db, server, "select confirm_payment('ws_CO_TWICE','REALRECEIPT1',6500,'0712345678') id"))[0].id;
     const again = (await as(db, server, "select confirm_payment('ws_CO_TWICE','STKQ-ws_CO_TWICE',6500,'0712345678') id"))[0].id;
     assert.equal(again, first);
     assert.equal((await one(db, "select count(*)::int n from ledger_entries where attempt_id=$1", [a])).n, 1);
-    await sql(db, "update payment_accounts set mode='platform', shortcode=null, shortcode_kind=null, status='not_connected', credentials_ciphertext=null where landlord_id=$1", [w.la]);
   });
   it("a failed prompt can be failed by its id, and silent attempts show up for a status check", async () => {
     const t = await tenancy();

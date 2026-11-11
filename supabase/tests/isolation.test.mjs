@@ -112,6 +112,7 @@ describe("who can read what", () => {
   it("browsers cannot call server-only functions", async () => {
     for (const fn of ["confirm_payment('x','y',1,'0711000001')", "record_c2b_payment('a',1,'b','0711000001')", "create_payout('" + w.la + "')",
                       "sms_charge('" + w.la + "','broadcast','0711000001','hi',1)", "expire_subscriptions()", "activate_subscription('" + w.la + "','REF12345',1000)",
+                      "start_tenant_payment_attempt('" + w.tA + "','0711000001','checkout',null,1000)",
                       "mark_contact_verified('" + w.la + "','email')", "create_visit_request('" + w.hA + "','A B','0711000009',current_date,'Morning')"]) {
       await rejects(as(db, user(w.la), `select ${fn}`), /permission denied/);
       await rejects(as(db, anon, `select ${fn}`), /permission denied/);

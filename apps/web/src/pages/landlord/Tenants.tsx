@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import { ArrowRight, Building2, CheckCircle2, ChevronLeft, ChevronRight, CircleDollarSign, Download, Eye, MessageCircle, Plus, Search, TriangleAlert, Users, Wrench } from "lucide-react";
+import { Link } from "react-router-dom";
 import { tenantSchema } from "@rh/shared";
 import type { InviteResult, TenancyRow } from "@/api/types";
 import { api } from "@/api";
@@ -7,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Field, SelectField } from "@/components/ui/Field";
 import { FileField } from "@/components/ui/FileField";
-import { ErrorNote, PageHead } from "@/components/ui/PageHead";
+import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
 import { useLandlordHouses } from "@/features/landlord/hooks";
 import { useLive, useLiveMutation } from "@/features/live";
@@ -170,34 +172,185 @@ function Detail({ t }: { t: TenancyRow }) {
 
 export default function Tenants() {
   const { data, isPending, error } = useLive("landlord", "tenants", () => api.landlord.tenants());
+  const houses = useLandlordHouses();
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
-  const [showEnded, setShowEnded] = useState(false);
-  const list = (data ?? []).filter((t) => showEnded || t.status !== "ended");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [page, setPage] = useState(0);
+  const pageSize = 6;
+  const allTenants = data ?? [];
+  const activeTenants = allTenants.filter((t) => t.status === "active" && t.joined && t.balance <= 0);
+  const overdueTenants = allTenants.filter((t) => t.status !== "ended" && t.joined && t.balance > 0);
+  const pendingTenants = allTenants.filter((t) => t.status !== "ended" && !t.joined);
+  const expectedRent = allTenants.filter((t) => t.status !== "ended").reduce((sum, t) => sum + t.rent, 0);
+  const vacantUnits = (houses.data ?? []).reduce((sum, house) => sum + house.vacant, 0);
+  const filters = ["All", "Active", "Overdue", "Pending", "Notice", "Former"];
+  const statusOf = (t: TenancyRow) => t.status === "ended" ? "Former" : !t.joined ? "Pending" : t.balance > 0 ? "Overdue" : t.status === "notice" ? "Notice" : "Active";
+  const visible = useMemo(() => allTenants.filter((t) => {
+    const term = search.trim().toLowerCase();
+    const matchesSearch = !term || [t.name, t.phone, t.houseTitle, t.unit].some((value) => value.toLowerCase().includes(term));
+    const status = statusOf(t);
+    return matchesSearch && (filter === "All" || status === filter);
+  }), [allTenants, filter, search]);
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const pageItems = visible.slice(page * pageSize, (page + 1) * pageSize);
+  const phoneForWhatsApp = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    return digits.startsWith("254") ? digits : digits.startsWith("0") ? `254${digits.slice(1)}` : digits;
+  };
+  const exportTenants = () => {
+    const quote = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
+    const rows = [
+      ["Tenant", "Phone", "Property", "Unit", "Monthly rent (KES)", "Balance (KES)", "Status"],
+      ...allTenants.map((t) => [t.name, t.phone, t.houseTitle, t.unit, t.rent, t.balance, statusOf(t)]),
+    ];
+    const csv = rows.map((row) => row.map(quote).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "houseplug-tenants.csv";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const statusClass = (status: string) => status === "Active"
+    ? "bg-emerald-100 text-emerald-800"
+    : status === "Overdue"
+      ? "bg-red-100 text-red-800"
+      : status === "Pending"
+        ? "bg-amber-100 text-amber-900"
+        : status === "Former"
+          ? "bg-slate-100 text-slate-600"
+          : "bg-blue-100 text-blue-800";
+  const statusBadge = (t: TenancyRow) => {
+    const status = statusOf(t);
+    return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${statusClass(status)}`}>
+      {status === "Active" ? <CheckCircle2 className="size-3.5" aria-hidden /> : status === "Overdue" ? <TriangleAlert className="size-3.5" aria-hidden /> : null}
+      {status}
+    </span>;
+  };
+  const directoryRows = (items: TenancyRow[]) => items.map((t) => (
+    <Fragment key={t.id}>
+      <tr className="border-t border-slate-100 hover:bg-slate-50/80">
+        <td className="px-3 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-pink-100 text-xs font-extrabold text-rose-900">{t.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
+            <div className="min-w-32"><p className="font-bold text-slate-900">{t.name}</p><p className="text-xs text-slate-500">{t.phone}</p></div>
+          </div>
+        </td>
+        <td className="px-3 py-3.5 text-sm text-slate-700">{t.houseTitle}</td>
+        <td className="px-3 py-3.5 text-sm font-semibold text-slate-800">{t.unit}</td>
+        <td className="px-3 py-3.5 text-sm font-bold text-slate-800">{formatKes(t.rent)}</td>
+        <td className={`px-3 py-3.5 text-sm font-bold ${t.balance > 0 ? "text-red-700" : "text-emerald-700"}`}>{formatKes(t.balance)}</td>
+        <td className="px-3 py-3.5">{statusBadge(t)}</td>
+        <td className="px-3 py-3.5">
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="glass" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}><Eye className="mr-1 size-4" aria-hidden />{open === t.id ? "Close" : "View"}</Button>
+            {t.status !== "ended" && <a className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-emerald-800 hover:bg-emerald-50" href={`https://wa.me/${phoneForWhatsApp(t.phone)}?text=${encodeURIComponent(`Hi ${t.name}, I am following up about your tenancy at ${t.houseTitle}, unit ${t.unit}.`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Message ${t.name} on WhatsApp`}><MessageCircle className="size-4" aria-hidden /></a>}
+          </div>
+        </td>
+      </tr>
+      {open === t.id && <tr><td colSpan={7} className="bg-slate-50/70"><Detail t={t} /></td></tr>}
+    </Fragment>
+  ));
 
   return (
     <div className="grid gap-4">
-      <PageHead title="Tenants" sub="Everyone renting from you, with their phone and emergency contact." action={!adding && <Button magnetic onClick={() => setAdding(true)}>Add a tenant</Button>} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 place-items-center rounded-xl bg-pink-100 text-rose-900"><Users className="size-6" aria-hidden /></span>
+          <div><h2 className="text-3xl font-bold text-slate-900">Tenants</h2><p className="text-sm text-slate-600">Manage tenancies, rent status, and tenant records.</p></div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="glass" onClick={exportTenants} disabled={allTenants.length === 0}><Download className="mr-1.5 size-4" aria-hidden />Export tenants</Button>
+          {!adding && <Button magnetic onClick={() => setAdding(true)}><Plus className="mr-1.5 size-4" aria-hidden />Add tenant</Button>}
+        </div>
+      </div>
       {adding && <AddTenant onDone={() => setAdding(false)} />}
       <ErrorNote error={error} />
       {isPending && <div className="skeleton h-24" />}
-      {data && list.length === 0 && !adding && <Panel className="p-4"><ToLet title="No tenants yet" note="Add a tenant when someone moves in. They get a login invite on WhatsApp and pay rent with M-Pesa." /></Panel>}
-      <Panel className="divide-y divide-white/8">
-        {list.map((t) => (
-          <div key={t.id}>
-            <button className="flex w-full flex-wrap items-center justify-between gap-3 p-5 text-left hover:bg-white/4" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}>
-              <div><p className="text-lg font-medium">{t.name}</p><p className="text-sm text-graphite-300">{t.houseTitle} · unit {t.unit}</p></div>
-              <div className="flex flex-wrap items-center gap-2">
-                {t.status === "ended" && <Chip>Moved out</Chip>}
-                {t.status !== "ended" && (t.balance > 0 ? <Chip tone="danger">Owes {formatKes(t.balance)}</Chip> : <Chip tone="ok">Paid up</Chip>)}
-                {t.status !== "ended" && <Chip tone={t.joined ? "ok" : "neutral"}>{t.joined ? "Has a login" : "Not joined"}</Chip>}
-              </div>
-            </button>
-            {open === t.id && <Detail t={t} />}
-          </div>
+      <section aria-label="Tenant summary" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { title: "Total tenants", value: String(allTenants.length), icon: Users, tone: "border-pink-100 bg-pink-50 text-rose-900" },
+          { title: "Active tenants", value: String(activeTenants.length), icon: CheckCircle2, tone: "border-emerald-100 bg-emerald-50 text-emerald-800" },
+          { title: "Rent overdue", value: String(overdueTenants.length), icon: TriangleAlert, tone: "border-orange-100 bg-orange-50 text-orange-800" },
+          { title: "Vacant units", value: houses.isPending || houses.isError ? "—" : String(vacantUnits), icon: Building2, tone: "border-indigo-100 bg-indigo-50 text-indigo-800" },
+        ].map(({ title, value, icon: Icon, tone }) => (
+          <Panel key={title} className={`flex items-center gap-3 border p-3.5 sm:p-4 ${tone}`}>
+            <Icon className="size-8 shrink-0" aria-hidden />
+            <div className="min-w-0"><p className="text-2xl font-extrabold leading-tight">{value}</p><p className="truncate text-xs font-semibold sm:text-sm">{title}</p></div>
+          </Panel>
         ))}
+      </section>
+      <Panel className="flex flex-wrap items-center gap-3 border-emerald-100 bg-gradient-to-r from-emerald-50 to-white p-4 sm:px-5">
+        <span className="grid size-11 place-items-center rounded-full bg-emerald-100 text-emerald-800"><CircleDollarSign className="size-6" aria-hidden /></span>
+        <div><p className="text-sm font-bold text-slate-800">Expected monthly rent</p><p className="text-2xl font-extrabold text-slate-900">{formatKes(expectedRent)}</p></div>
+        <span className="ml-auto text-sm font-semibold text-emerald-800">Based on current tenancies</span>
       </Panel>
-      {(data ?? []).some((t) => t.status === "ended") && <div><Button variant="ghost" size="sm" onClick={() => setShowEnded(!showEnded)}>{showEnded ? "Hide moved-out tenants" : "Show moved-out tenants"}</Button></div>}
+
+      <Panel id="tenant-directory" className="scroll-mt-24 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+          <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900"><Users className="size-5 text-rose-900" aria-hidden />Tenant directory</h3>
+          <label className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+            <span className="sr-only">Search tenants</span>
+            <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Search name, phone, property or unit…" className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none" />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2 px-4 pb-4 sm:px-5">
+          {filters.map((item) => <button key={item} type="button" aria-pressed={filter === item} onClick={() => { setFilter(item); setPage(0); }} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${filter === item ? "border-rose-900 bg-rose-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>{item}{item === "Pending" && pendingTenants.length > 0 ? ` (${pendingTenants.length})` : ""}</button>)}
+        </div>
+        {allTenants.length === 0 && !isPending
+          ? <div className="border-t border-slate-100 p-5"><ToLet title="No tenants yet" note="Add a tenant when someone moves in. They can join through a WhatsApp invite and manage their rent from the tenant portal." /></div>
+          : visible.length === 0
+            ? <p className="border-t border-slate-100 p-5 text-sm text-slate-600">No tenants match this search or status.</p>
+            : <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[860px] border-collapse text-left">
+                  <thead className="bg-slate-50 text-xs font-bold text-slate-600"><tr>
+                    <th className="px-3 py-3">Tenant</th><th className="px-3 py-3">Property</th><th className="px-3 py-3">House / unit</th><th className="px-3 py-3">Monthly rent</th><th className="px-3 py-3">Balance</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Actions</th>
+                  </tr></thead>
+                  <tbody>{directoryRows(pageItems)}</tbody>
+                </table>
+              </div>
+              <div className="divide-y divide-slate-100 border-t border-slate-100 md:hidden">
+                {pageItems.map((t) => (
+                  <article key={t.id} className="grid gap-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0"><p className="font-bold text-slate-900">{t.name}</p><p className="text-sm text-slate-500">{t.phone}</p></div>{statusBadge(t)}
+                    </div>
+                    <p className="text-sm text-slate-700">{t.houseTitle} · Unit {t.unit}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>Rent <b className="text-slate-900">{formatKes(t.rent)}</b></span><span>Balance <b className={t.balance > 0 ? "text-red-700" : "text-emerald-700"}>{formatKes(t.balance)}</b></span></div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="glass" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}><Eye className="mr-1 size-4" aria-hidden />{open === t.id ? "Close details" : "View details"}</Button>
+                      {t.status !== "ended" && <a className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-emerald-800" href={`https://wa.me/${phoneForWhatsApp(t.phone)}?text=${encodeURIComponent(`Hi ${t.name}, I am following up about your tenancy at ${t.houseTitle}, unit ${t.unit}.`)}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" aria-hidden />WhatsApp</a>}
+                    </div>
+                    {open === t.id && <Detail t={t} />}
+                  </article>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm text-slate-600 sm:px-5">
+                <p>Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, visible.length)} of {visible.length} tenants</p>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="glass" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))} aria-label="Previous page"><ChevronLeft className="size-4" aria-hidden /></Button>
+                  <span className="min-w-16 text-center text-xs font-semibold">Page {page + 1} of {pageCount}</span>
+                  <Button size="sm" variant="glass" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} aria-label="Next page"><ChevronRight className="size-4" aria-hidden /></Button>
+                </div>
+              </div>
+            </>}
+      </Panel>
+
+      <Panel className="p-4 sm:p-5">
+        <h3 className="text-lg font-bold text-slate-900">Quick actions</h3>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { to: "/landlord/finances", title: "View rent history", icon: CircleDollarSign },
+            { to: "/landlord/tenants#tenant-directory", title: "Manage agreements", icon: Building2 },
+            { to: "/landlord/complaints", title: "Track maintenance", icon: Wrench },
+            { to: "#tenant-directory", title: "Contact tenants", icon: MessageCircle },
+          ].map(({ to, title, icon: Icon }) => <Link key={title} to={to} className="flex items-center justify-center gap-2 rounded-xl border border-pink-100 bg-pink-50/70 px-3 py-3 text-sm font-bold text-rose-900 hover:bg-pink-100"><Icon className="size-4" aria-hidden />{title}<ArrowRight className="size-4" aria-hidden /></Link>)}
+        </div>
+      </Panel>
     </div>
   );
 }
