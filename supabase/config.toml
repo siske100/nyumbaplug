@@ -70,6 +70,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.invite-create]
 verify_jwt = true
+[functions.tenant-terminate]
+verify_jwt = true
 # Called by Safaricom, visitors and the scheduler: they carry no sign-in, and each protects itself (secret address, codes, shared secret).
 [functions.daraja-stk-callback]
 verify_jwt = false

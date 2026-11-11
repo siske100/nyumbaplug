@@ -42,3 +42,10 @@ export async function acceptInvite(d: AcceptDeps, b: Record<string, unknown>) {
   if (r.error) { await d.deleteUser(userId).catch(() => {}); throw fromDb(r.error); }       // no half-made accounts
   return { ok: true, kind: info.kind };
 }
+
+export async function acceptInviteForUser(d: { rpc: Rpc; pepper: string }, token: unknown, userId: string) {
+  const info = await lookupInvite(d, token);
+  const r = await d.rpc("invite_accept", { p_hash: await hmacHex(token as string, d.pepper), p_user: userId });
+  if (r.error) throw fromDb(r.error);
+  return { ok: true, kind: info.kind };
+}

@@ -12,7 +12,8 @@
 
 **Accounts**
 - Roles and account state cannot be self-edited. A user cannot choose a role at sign-up. Only the server creates tenant and admin logins.
-- Tenant phone codes are stored only as keyed hashes, limited per phone and per network address, burn after five wrong tries, and expire in five minutes. Landlords verify email and provide a phone number for M-Pesa prompts; landlord phone numbers are not OTP-verified.
+- Tenant phone codes are stored only as keyed hashes, limited per phone and per network address, burn after five wrong tries, and expire in five minutes. Invite-linked tenant accounts use the phone number provided by their landlord and do not require phone OTP verification. Landlords verify email and provide a phone number for M-Pesa prompts; landlord phone numbers are not OTP-verified.
+- Deleting a tenant login through a landlord move-out removes the auth/profile account and unlinks it from all tenancies; financial and tenancy history is retained, and complaint messages remain with the deleted author anonymized.
 - Invite links carry a 256-bit secret stored only as a hash; they expire in 7 days and work once.
 - ID and KRA files: private storage, own folder only, only while documents are requested, 12 files, 5 MB, JPG/PNG/PDF, never editable or deletable, checked by their real contents.
 

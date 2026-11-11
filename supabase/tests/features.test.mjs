@@ -36,16 +36,48 @@ describe("invites", () => {
     await rejects(as(db, server, "select create_invite($1,'caretaker',null,$2)", [w.la, "caretaker-hash"]), /Unknown invite type/);
   });
   it("accepting links the tenant to the tenancy, once, and only with the right kind of account", async () => {
+    await invite("hash-account-link");
     const newTenant = await mkUser(db, "newtenant@x.ke", { app: { invited_role: "tenant" } });
-    const newLandlord = await mkUser(db, "stray@x.ke");
-    await rejects(as(db, server, "select invite_accept('hash-2',$1)", [newLandlord]), /cannot accept that invite/);
-    assert.equal((await as(db, server, "select invite_accept('hash-2',$1) k", [newTenant]))[0].k, "tenant");
+    await rejects(as(db, server, "select invite_accept('hash-account-link',$1)", [w.lb]), /landlord data and cannot be converted/);
+    assert.equal((await as(db, server, "select invite_accept('hash-account-link',$1) k", [newTenant]))[0].k, "tenant");
     const t = await one(db, "select tenant_user_id u from tenancies where id=$1", [tN]);
     assert.equal(t.u, newTenant);
     const p = await one(db, "select phone, phone_verified v from profiles where id=$1", [newTenant]);
-    assert.deepEqual(p, { phone: "0722111222", v: false });                  // the phone still has to be verified by code
+    assert.deepEqual(p, { phone: "0722111222", v: true });                   // landlord-provided phone; no SMS verification step
     assert.equal((await as(db, user(newTenant), "select id from tenancies")).length, 1);
-    await rejects(as(db, server, "select invite_accept('hash-2',$1)", [newTenant]), /no longer valid/);
+    await rejects(as(db, server, "select invite_accept('hash-account-link',$1)", [newTenant]), /no longer valid/);
+
+    const additionalTenancy = (await as(db, user(w.la), `insert into tenancies(landlord_id,house_id,unit_label,tenant_name,tenant_phone,emergency_name,emergency_phone,emergency_relationship,rent_amount,deposit_amount,due_day)
+      values ($1,$2,'A10','Sam Tenant','0711222333','Grace Contact','0722333444','mother',6500,6500,5) returning id`, [w.la, w.hA]))[0].id;
+    await as(db, server, "select create_invite($1,'tenant',$2,'hash-existing-account')", [w.la, additionalTenancy]);
+    const existingAccount = await mkUser(db, "stray@x.ke");
+    assert.equal((await one(db, "select role::text role from profiles where id=$1", [existingAccount])).role, "landlord");
+    assert.equal((await as(db, server, "select invite_accept('hash-existing-account',$1) k", [existingAccount]))[0].k, "tenant");
+    assert.deepEqual(await one(db, "select role::text role, landlord_state::text state from profiles where id=$1", [existingAccount]), { role: "tenant", state: null });
+    assert.equal((await one(db, "select tenant_user_id user_id from tenancies where id=$1", [additionalTenancy])).user_id, existingAccount);
+
+    const otherLandlordTenancy = (await as(db, user(w.lb), `insert into tenancies(landlord_id,house_id,unit_label,tenant_name,tenant_phone,emergency_name,emergency_phone,emergency_relationship,rent_amount,deposit_amount,due_day)
+      values ($1,$2,'B9','Sam Tenant','0711222333','Grace Contact','0722333444','mother',6500,6500,5) returning id`, [w.lb, w.hB]))[0].id;
+    await sql(db, "update tenancies set tenant_user_id=$1 where id=$2", [existingAccount, otherLandlordTenancy]);
+    const complaint = (await sql(db, `insert into complaints(tenancy_id,landlord_id,category,title)
+      values ($1,$2,'Other','Tenant account history') returning id`, [otherLandlordTenancy, w.lb]))[0].id;
+    await sql(db, "insert into complaint_messages(complaint_id,author_id,body) values ($1,$2,'Please keep this history')", [complaint, existingAccount]);
+    const marketer = await mkUser(db, "market@x.ke", { meta: { requested_role: "marketer" } });
+    await sql(db, "update marketplace_marketers set status='active', activated_at=now(), activation_receipt='MARKET-RECEIPT' where marketer_id=$1", [marketer]);
+    const listing = (await sql(db, `insert into marketplace_listings(marketer_id,title,description,county_id,town_id,house_type,rent_amount,viewing_fee)
+      values ($1,'Viewing listing','A listing for tenant account deletion testing',39,(select id from towns where name='Bungoma Town'),'Bedsitter',6500,100) returning id`, [marketer]))[0].id;
+    const booking = (await sql(db, `insert into marketplace_bookings(listing_id,marketer_id,client_id,listing_title,county_name,town_name,marketer_name,client_name,booking_phone,viewing_date,time_window,amount)
+      values ($1,$2,$3,'Viewing listing','Bungoma','Bungoma Town','Market Agent','Former Tenant','0722111222',current_date + 1,'Morning',100) returning id`, [listing, marketer, existingAccount]))[0].id;
+
+    await rejects(as(db, user(w.lb), "select terminate_tenant_account($1)", [additionalTenancy]), /Tenant not found/);
+    assert.equal((await as(db, user(w.la), "select terminate_tenant_account($1) user_id", [additionalTenancy]))[0].user_id, existingAccount);
+    assert.equal((await one(db, "select status::text status from tenancies where id=$1", [additionalTenancy])).status, "ended");
+    await sql(db, "delete from auth.users where id=$1", [existingAccount]);
+    assert.equal((await as(db, user(w.la), "select terminate_tenant_account($1) user_id", [additionalTenancy]))[0].user_id, null);
+    assert.equal((await one(db, "select count(*)::int n from profiles where id=$1", [existingAccount])).n, 0);
+    assert.deepEqual(await one(db, "select status::text status, tenant_user_id user_id from tenancies where id=$1", [otherLandlordTenancy]), { status: "active", user_id: null });
+    assert.deepEqual(await one(db, "select author_id from complaint_messages where complaint_id=$1", [complaint]), { author_id: null });
+    assert.deepEqual(await one(db, "select client_id from marketplace_bookings where id=$1", [booking]), { client_id: null });
   });
   it("expired invites and invites from locked landlords stop working", async () => {
     await sql(db, "update tenancies set tenant_user_id = null where id=$1", [w.tB]);

@@ -64,6 +64,7 @@ function Detail({ t }: { t: TenancyRow }) {
   const upload = useLiveMutation("landlord", (f: File) => api.landlord.uploadAgreement(t.id, f));
   const invite = useLiveMutation<void, InviteResult>("landlord", () => api.landlord.inviteTenant(t.id));
   const end = useLiveMutation("landlord", () => api.landlord.endTenancy(t.id));
+  const terminate = useLiveMutation("landlord", () => api.landlord.terminateTenantAccount(t.id));
   const [pb, setPb] = useState(t.kplcPaybill ?? "");
   const [mn, setMn] = useState(t.meterNumber ?? "");
   const [scan, setScan] = useState<File | null>(null);
@@ -148,10 +149,21 @@ function Detail({ t }: { t: TenancyRow }) {
       </div>
 
       {msg && <p role="status" className="text-sm text-ok">{msg}</p>}
-      <ErrorNote error={update.error ?? end.error} />
+      <ErrorNote error={update.error ?? end.error ?? terminate.error} />
       {t.status !== "ended" && (confirmEnd
-        ? <div className="flex flex-wrap items-center gap-2"><span className="text-sm text-graphite-200">Move this tenant out? The unit becomes vacant again.</span><Button size="sm" loading={end.isPending} onClick={() => end.mutate()}>Yes, move out</Button><Button variant="ghost" size="sm" onClick={() => setConfirmEnd(false)}>Cancel</Button></div>
-        : <div><Button variant="ghost" size="sm" onClick={() => setConfirmEnd(true)}>Move out</Button></div>)}
+        ? <div className="grid gap-2">
+          <span className="text-sm text-graphite-200">{t.joined
+            ? "Move this tenant out and permanently delete their HousePlug login? They will lose access to every tenancy on this account. Tenancy and payment history will be kept."
+            : "Move this tenant out? The unit becomes vacant again."}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" loading={t.joined ? terminate.isPending : end.isPending} onClick={() => {
+              const mutation = t.joined ? terminate : end;
+              mutation.mutate(undefined, { onSuccess: () => { setConfirmEnd(false); setMsg(t.joined ? "Tenant moved out and their account was deleted. Payment history was kept." : "Tenant moved out."); } });
+            }}>{t.joined ? "Move out & delete account" : "Yes, move out"}</Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmEnd(false)}>Cancel</Button>
+          </div>
+        </div>
+        : <div><Button variant="ghost" size="sm" onClick={() => setConfirmEnd(true)}>{t.joined ? "Move out & delete account" : "Move out"}</Button></div>)}
     </div>
   );
 }

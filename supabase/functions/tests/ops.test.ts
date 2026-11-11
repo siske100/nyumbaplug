@@ -1,9 +1,10 @@
 import nodeAssert from "node:assert/strict";
 import type { Daraja, DarajaCreds } from "../_shared/daraja.ts";
-import { acceptInvite, createInvite, lookupInvite } from "../_shared/invites.ts";
+import { acceptInvite, acceptInviteForUser, createInvite, lookupInvite } from "../_shared/invites.ts";
 import { broadcast, notifyPaid, reminderSms, runReminders, sendLandlordSms, submitVisitRequest } from "../_shared/messaging.ts";
 import { runCron } from "../_shared/cron.ts";
 import { HttpError, type Rpc } from "../_shared/ops.ts";
+import { terminateTenantAccount } from "../_shared/tenant-account.ts";
 import { bankTestPay, c2bConfirm, c2bValidate, connectDaraja, handleStkCallback, platformPay, reconcilePending, tenantPay, type ConnectDeps } from "../_shared/payments.ts";
 
 const eq = (a: unknown, b: unknown) => nodeAssert.deepStrictEqual(a, b);
@@ -449,6 +450,38 @@ Deno.test("invite lookup: invalid links look the same as expired ones, and the p
   await rejectsWith(() => lookupInvite({ rpc: fake({ invite_lookup: () => ({ data: null }) }).rpc, pepper: "p" }, "x".repeat(43)), 404);
   await rejectsWith(() => lookupInvite({ rpc: f.rpc, pepper: "p" }, "short"), 404);
   await rejectsWith(() => lookupInvite({ rpc: f.rpc, pepper: "p" }, 12345), 404);
+});
+
+Deno.test("invite: an existing signed-in account is linked by its invite token", async () => {
+  const f = fake({ invite_lookup: () => ({ data: info }), invite_accept: () => ({ data: "tenant" }) });
+  eq(await acceptInviteForUser({ rpc: f.rpc, pepper: "p" }, "x".repeat(43), "existing-user"), { ok: true, kind: "tenant" });
+  eq(f.last("invite_accept")?.p_user, "existing-user");
+  const invalid = fake({ invite_lookup: () => ({ data: null }) });
+  await rejectsWith(() => acceptInviteForUser({ rpc: invalid.rpc, pepper: "p" }, "x".repeat(43), "existing-user"), 404);
+  ok(!invalid.names().includes("invite_accept"));
+});
+
+Deno.test("tenant termination: ends an owned tenancy and deletes its linked auth account", async () => {
+  const f = fake({ terminate_tenant_account: () => ({ data: "tenant-user" }) });
+  const deleted: string[] = [];
+  eq(await terminateTenantAccount({
+    rpc: f.rpc,
+    deleteUser: async (id) => { deleted.push(id); return { error: null }; },
+  }, "12345678-1234-1234-1234-123456789abc"), { deleted: true });
+  eq(f.last("terminate_tenant_account")?.p_tenancy, "12345678-1234-1234-1234-123456789abc");
+  eq(deleted, ["tenant-user"]);
+
+  const alreadyDeleted = fake({ terminate_tenant_account: () => ({ data: null }) });
+  eq(await terminateTenantAccount({
+    rpc: alreadyDeleted.rpc,
+    deleteUser: async () => { throw new Error("should not be called"); },
+  }, "12345678-1234-1234-1234-123456789abc"), { deleted: true });
+
+  await rejectsWith(() => terminateTenantAccount({
+    rpc: fake({ terminate_tenant_account: () => ({ data: "tenant-user" }) }).rpc,
+    deleteUser: async () => ({ error: { message: "provider unavailable" } }),
+  }, "12345678-1234-1234-1234-123456789abc"), 502, /could not be deleted/);
+  await rejectsWith(() => terminateTenantAccount({ rpc: f.rpc, deleteUser: async () => ({ error: null }) }, "bad"), 400, /valid tenancy/);
 });
 
 Deno.test("invite accept: strong password, the server picks the role, and a refused invite leaves no half-made account", async () => {

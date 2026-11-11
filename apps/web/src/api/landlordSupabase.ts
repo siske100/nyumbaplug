@@ -316,6 +316,9 @@ export const landlordApi: LandlordApi = {
     const { error } = await supabase.from("tenancies").update({ status: "ended" }).eq("id", id);
     if (error) throw dbError(error);
   },
+  async terminateTenantAccount(id) {
+    await callFunction("tenant-terminate", { tenancyId: id });
+  },
   async updateTenancy(id, p) {
     const u: Row = {};
     if (p.agreementSignedOn !== undefined) u.agreement_signed_on = p.agreementSignedOn;

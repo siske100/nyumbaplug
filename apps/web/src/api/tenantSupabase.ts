@@ -98,4 +98,5 @@ export const siteApi: SiteApi = {
   async requestVisit(i) { await callFunction("visit-request", i as unknown as Record<string, unknown>); },
   inviteInfo: (token) => callFunction<InviteInfo>("invite-lookup", { token }),
   async acceptInvite(token, email, password) { await callFunction("invite-accept", { token, email, password }); },
+  async acceptInviteForCurrentUser(token) { await callFunction("invite-accept", { token }); },
 };

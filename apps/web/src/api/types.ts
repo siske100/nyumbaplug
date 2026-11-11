@@ -210,6 +210,7 @@ export interface LandlordApi {
   tenants(): Promise<TenancyRow[]>;
   addTenant(input: TenantInput): Promise<void>;
   endTenancy(id: string): Promise<void>;
+  terminateTenantAccount(id: string): Promise<void>;
   updateTenancy(id: string, patch: TenancyPatch): Promise<void>;
   uploadAgreement(id: string, file: File): Promise<void>;
   fileUrl(bucket: "agreements", path: string): Promise<string>;
@@ -270,6 +271,7 @@ export interface SiteApi {
   requestVisit(input: VisitRequestInput): Promise<void>;
   inviteInfo(token: string): Promise<InviteInfo>;
   acceptInvite(token: string, email: string, password: string): Promise<void>;
+  acceptInviteForCurrentUser(token: string): Promise<void>;
 }
 
 export interface MarketplaceListing {

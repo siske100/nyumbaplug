@@ -1,10 +1,16 @@
-import { adminClient, handle, readJson } from "../_shared/http.ts";
-import { acceptInvite } from "../_shared/invites.ts";
+import { adminClient, handle, HttpError, readJson } from "../_shared/http.ts";
+import { acceptInvite, acceptInviteForUser } from "../_shared/invites.ts";
 import { pepper } from "../_shared/wiring.ts";
 
-// Public. The secret in the link is the proof. The account is created here, by the server, because only the server may choose a role.
 Deno.serve(handle(async (req) => {
   const admin = adminClient();
+  const authToken = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const auth = authToken ? (await admin.auth.getUser(authToken)).data.user : null;
+  const b = await readJson(req);
+  if (auth) return acceptInviteForUser({ rpc: (fn, args) => admin.rpc(fn, args), pepper: pepper("invite") }, b.token, auth.id);
+  if (typeof b.email !== "string" || typeof b.password !== "string") {
+    throw new HttpError(401, "Sign in to link this tenancy");
+  }
   return acceptInvite({
     rpc: (fn, args) => admin.rpc(fn, args), pepper: pepper("invite"),
     createUser: async (email, password, kind) => {
@@ -13,5 +19,5 @@ Deno.serve(handle(async (req) => {
       return data.user.id;
     },
     deleteUser: async (id) => { await admin.auth.admin.deleteUser(id); },
-  }, await readJson(req));
+  }, b);
 }));

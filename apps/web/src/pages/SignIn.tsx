@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "@/api";
 import type { Role, Session } from "@/api/types";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,11 @@ export default function SignIn() {
   const { data: session, error: sessionError } = useSession();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const from = (useLocation().state as { from?: string } | null)?.from;
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const stateFrom = (location.state as { from?: string } | null)?.from;
+  const inviteFrom = params.get("next");
+  const from = stateFrom ?? (inviteFrom?.startsWith("/invite/") ? inviteFrom : undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -29,7 +33,7 @@ export default function SignIn() {
   const google = useMutation({ mutationFn: () => api.signInWithGoogle() });
   const dev = useMutation({ mutationFn: (role: Role) => api.devSignIn!(role), onSuccess });
 
-  if (session) return <Navigate to={homeFor(session.role)} replace />;
+  if (session) return <Navigate to={from ?? homeFor(session.role)} replace />;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

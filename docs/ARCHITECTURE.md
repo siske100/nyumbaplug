@@ -7,7 +7,8 @@
 
 ## Account journeys
 - **Landlord:** sign up, confirm email (code), confirm phone (SMS code), upload ID and KRA, admin approves, pay the first month by M-Pesa, active.
-- **Tenant:** a landlord invites them. They open the link, create a login, confirm the phone, and use their area.
+- **Tenant:** a landlord invites them. They open the link, create a login, and use their area. The landlord-provided phone is linked without an SMS verification code.
+- When a landlord moves out a tenant with a login, they can delete that tenant account. The tenancy and payment history are retained; any other tenancy links for that account are disconnected.
 - **Admin:** created by hand, authenticator code required for every session.
 - **Visitor:** no account or phone code. Shares contact details and preferred viewing time; the landlord reaches out.
 
