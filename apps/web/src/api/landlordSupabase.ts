@@ -55,6 +55,7 @@ async function tenancyRows(): Promise<TenancyRow[]> {
     id: r.id as string, houseId: r.house_id as string, houseTitle: title.get(r.house_id as string) ?? "", unit: r.unit_label as string, name: r.tenant_name as string,
     phone: r.tenant_phone as string, emergencyName: r.emergency_name as string, emergencyPhone: r.emergency_phone as string, emergencyRelationship: r.emergency_relationship as string,
     rent: num(r.rent_amount), deposit: num(r.deposit_amount), dueDay: num(r.due_day), status: r.status as TenancyRow["status"], code: r.tenancy_code as string, joined: r.tenant_user_id != null,
+    startedOn: r.started_on as string,
     agreementSignedOn: (r.agreement_signed_on as string | null) ?? null, agreementPath: (r.agreement_file_path as string | null) ?? null,
     electricityEnabled: Boolean(r.electricity_enabled), kplcPaybill: (r.kplc_paybill as string | null) ?? null, meterNumber: (r.meter_number as string | null) ?? null, balance: bal.get(r.id as string) ?? 0,
   }));
@@ -76,7 +77,7 @@ async function complaintItems(uid: string): Promise<ComplaintItem[]> {
   return list.map((c): ComplaintItem => {
     const tn = ten.get(c.tenancy_id as string);
     return {
-      id: c.id as string, title: c.title as string, category: c.category as string, status: c.status as ComplaintItem["status"], priority: c.priority as string, at: c.created_at as string,
+      id: c.id as string, tenancyId: c.tenancy_id as string, title: c.title as string, category: c.category as string, status: c.status as ComplaintItem["status"], priority: c.priority as string, at: c.created_at as string,
       tenantName: (tn?.tenant_name as string) ?? "", unit: (tn?.unit_label as string) ?? "", houseTitle: title.get(tn?.house_id as string) ?? "",
       messages: msgs.filter((x) => x.complaint_id === c.id).map((x) => ({ id: x.id as number, mine: x.author_id === uid, body: x.body as string, at: x.created_at as string })),
     };
@@ -300,6 +301,24 @@ export const landlordApi: LandlordApi = {
   },
 
   tenants: tenancyRows,
+  async tenantLedger(tenancyId): Promise<LedgerRow[]> {
+    const [ledgerResult, tenancyResult] = await Promise.all([
+      supabase.from("ledger_entries")
+        .select("id, tenancy_id, kind, bucket, amount, method, provider_ref, receipt_no, reverses_id, created_at")
+        .eq("tenancy_id", tenancyId).order("created_at", { ascending: false }).limit(1000),
+      supabase.from("tenancies").select("tenant_name, unit_label").eq("id", tenancyId).maybeSingle(),
+    ]);
+    const tenant = ok(tenancyResult) as Row | null;
+    if (!tenant) throw new ApiError(404, "Tenant not found");
+    const rows = ok(ledgerResult) as Row[];
+    const reversed = new Set(rows.filter((row) => row.reverses_id).map((row) => row.reverses_id as string));
+    return rows.map((row): LedgerRow => ({
+      id: row.id as string, tenancyId: row.tenancy_id as string, tenantName: tenant.tenant_name as string, unit: tenant.unit_label as string,
+      kind: row.kind as LedgerRow["kind"], bucket: row.bucket as LedgerRow["bucket"], amount: num(row.amount), method: row.method as string,
+      ref: row.provider_ref as string, receipt: row.receipt_no as string, at: row.created_at as string,
+      reversed: reversed.has(row.id as string),
+    }));
+  },
   async addTenant(i) {
     const uid = await currentUserId();
     const { error } = await supabase.from("tenancies").insert({

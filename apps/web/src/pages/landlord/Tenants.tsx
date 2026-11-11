@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Building2, CheckCircle2, ChevronLeft, ChevronRight, CircleDollarSign, Download, Eye, MessageCircle, Plus, Search, TriangleAlert, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tenantSchema } from "@rh/shared";
@@ -6,14 +6,12 @@ import type { InviteResult, TenancyRow } from "@/api/types";
 import { api } from "@/api";
 import { ToLet } from "@/components/motion/Doodles";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
 import { Field, SelectField } from "@/components/ui/Field";
-import { FileField } from "@/components/ui/FileField";
 import { ErrorNote } from "@/components/ui/PageHead";
 import { Panel } from "@/components/ui/Panel";
 import { useLandlordHouses } from "@/features/landlord/hooks";
 import { useLive, useLiveMutation } from "@/features/live";
-import { fmtDate, formatKes, todayIso } from "@/lib/format";
+import { formatKes } from "@/lib/format";
 
 function AddTenant({ onDone }: { onDone: () => void }) {
   const houses = useLandlordHouses();
@@ -61,21 +59,18 @@ function AddTenant({ onDone }: { onDone: () => void }) {
   );
 }
 
-function Detail({ t }: { t: TenancyRow }) {
+export function TenantManagement({ t }: { t: TenancyRow }) {
   const update = useLiveMutation("landlord", (p: Parameters<typeof api.landlord.updateTenancy>[1]) => api.landlord.updateTenancy(t.id, p));
-  const upload = useLiveMutation("landlord", (f: File) => api.landlord.uploadAgreement(t.id, f));
   const invite = useLiveMutation<void, InviteResult>("landlord", () => api.landlord.inviteTenant(t.id));
   const end = useLiveMutation("landlord", () => api.landlord.endTenancy(t.id));
   const terminate = useLiveMutation("landlord", () => api.landlord.terminateTenantAccount(t.id));
   const [pb, setPb] = useState(t.kplcPaybill ?? "");
   const [mn, setMn] = useState(t.meterNumber ?? "");
-  const [scan, setScan] = useState<File | null>(null);
   const [link, setLink] = useState<InviteResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [msg, setMsg] = useState<string>();
 
-  const openAgreement = async () => { if (t.agreementPath) window.open(await api.landlord.fileUrl("agreements", t.agreementPath), "_blank", "noopener,noreferrer"); };
   const sendInvite = () => {
     const whatsapp = window.open("about:blank", "_blank");
     invite.mutate(undefined, {
@@ -95,8 +90,6 @@ function Detail({ t }: { t: TenancyRow }) {
   const inviteText = link && `Hi ${t.name}, I’ve added you as a tenant for ${t.houseTitle}, unit ${t.unit}. Set up your HousePlug tenant login here: ${link.link}`;
   const whatsappPhone = t.phone.replace(/\D/g, "").replace(/^0/, "254");
   const whatsappUrl = inviteText && `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(inviteText)}`;
-  const agreement = t.agreementPath ? "Agreement uploaded" : "No agreement uploaded";
-
   return (
     <div className="grid gap-5 border-t border-white/8 p-5">
       <div className="grid gap-2 text-sm text-graphite-200 sm:grid-cols-2">
@@ -125,19 +118,6 @@ function Detail({ t }: { t: TenancyRow }) {
           )}
         </div>
       )}
-
-      <div className="grid gap-3 rounded-xl border border-white/10 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg">Tenancy agreement</h3><Chip tone={t.agreementPath ? "ok" : "neutral"}>{agreement}</Chip></div>
-        <p className="text-sm text-graphite-300">Upload your own tenancy agreement (PDF, JPG or PNG, up to 5 MB). The tenant can download it from their Documents page. No default agreement template is provided.</p>
-        <div className="flex flex-wrap gap-2">
-          {!t.agreementSignedOn && <Button variant="ghost" size="sm" onClick={() => update.mutate({ agreementSignedOn: todayIso() })}>Mark as signed today</Button>}
-          {t.agreementPath && <Button variant="ghost" size="sm" onClick={() => void openAgreement()}>Download agreement</Button>}
-        </div>
-        {t.agreementSignedOn && <p className="text-sm text-graphite-400">Signed {fmtDate(t.agreementSignedOn)}.</p>}
-        <FileField label={t.agreementPath ? "Replace uploaded agreement" : "Upload your tenancy agreement"} hint="The uploaded document will be available to the tenant." file={scan} onPick={setScan} />
-        {scan && <div><Button size="sm" loading={upload.isPending} onClick={() => upload.mutate(scan, { onSuccess: () => { setScan(null); setMsg("Agreement uploaded."); } })}>{t.agreementPath ? "Replace agreement" : "Upload agreement"}</Button></div>}
-        <ErrorNote error={upload.error} />
-      </div>
 
       <div className="grid gap-3 rounded-xl border border-white/10 p-4">
         <div className="flex items-center justify-between gap-2"><h3 className="text-lg">Electricity tokens</h3>
@@ -174,7 +154,6 @@ export default function Tenants() {
   const { data, isPending, error } = useLive("landlord", "tenants", () => api.landlord.tenants());
   const houses = useLandlordHouses();
   const [adding, setAdding] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [page, setPage] = useState(0);
@@ -230,7 +209,6 @@ export default function Tenants() {
     </span>;
   };
   const directoryRows = (items: TenancyRow[]) => items.map((t) => (
-    <Fragment key={t.id}>
       <tr className="border-t border-slate-100 hover:bg-slate-50/80">
         <td className="px-3 py-3.5">
           <div className="flex items-center gap-2.5">
@@ -245,13 +223,11 @@ export default function Tenants() {
         <td className="px-3 py-3.5">{statusBadge(t)}</td>
         <td className="px-3 py-3.5">
           <div className="flex items-center gap-1.5">
-            <Button size="sm" variant="glass" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}><Eye className="mr-1 size-4" aria-hidden />{open === t.id ? "Close" : "View"}</Button>
+            <Link to={`/landlord/tenants/${t.id}`} className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"><Eye className="mr-1 size-4" aria-hidden />View</Link>
             {t.status !== "ended" && <a className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 text-emerald-800 hover:bg-emerald-50" href={`https://wa.me/${phoneForWhatsApp(t.phone)}?text=${encodeURIComponent(`Hi ${t.name}, I am following up about your tenancy at ${t.houseTitle}, unit ${t.unit}.`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Message ${t.name} on WhatsApp`}><MessageCircle className="size-4" aria-hidden /></a>}
           </div>
         </td>
       </tr>
-      {open === t.id && <tr><td colSpan={7} className="bg-slate-50/70"><Detail t={t} /></td></tr>}
-    </Fragment>
   ));
 
   return (
@@ -322,10 +298,9 @@ export default function Tenants() {
                     <p className="text-sm text-slate-700">{t.houseTitle} · Unit {t.unit}</p>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>Rent <b className="text-slate-900">{formatKes(t.rent)}</b></span><span>Balance <b className={t.balance > 0 ? "text-red-700" : "text-emerald-700"}>{formatKes(t.balance)}</b></span></div>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="glass" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id}><Eye className="mr-1 size-4" aria-hidden />{open === t.id ? "Close details" : "View details"}</Button>
+                      <Link to={`/landlord/tenants/${t.id}`} className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"><Eye className="mr-1 size-4" aria-hidden />View profile</Link>
                       {t.status !== "ended" && <a className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold text-emerald-800" href={`https://wa.me/${phoneForWhatsApp(t.phone)}?text=${encodeURIComponent(`Hi ${t.name}, I am following up about your tenancy at ${t.houseTitle}, unit ${t.unit}.`)}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" aria-hidden />WhatsApp</a>}
                     </div>
-                    {open === t.id && <Detail t={t} />}
                   </article>
                 ))}
               </div>

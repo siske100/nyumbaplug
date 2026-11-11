@@ -21,6 +21,7 @@ const InviteAccept = lazy(() => import("@/pages/InviteAccept"));
 const L = {
   Layout: lazy(() => import("@/pages/landlord/LandlordLayout")), Overview: lazy(() => import("@/pages/landlord/Overview")), Houses: lazy(() => import("@/pages/landlord/Houses")),
   Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")),
+  TenantProfile: lazy(() => import("@/pages/landlord/TenantProfile")),
   Finances: lazy(() => import("@/pages/landlord/Finances")), Sms: lazy(() => import("@/pages/landlord/Sms")),
   Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")),
 };
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="houses" element={<L.Houses />} />
           <Route path="visits" element={<L.Visits />} />
           <Route path="tenants" element={<L.Tenants />} />
+          <Route path="tenants/:id" element={<L.TenantProfile />} />
           <Route path="finances" element={<L.Finances />} />
           <Route path="payments" element={<Navigate to="/landlord/finances#ledger" replace />} />
           <Route path="mpesa" element={<Navigate to="/landlord/finances#payment-setup" replace />} />

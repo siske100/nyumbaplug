@@ -152,7 +152,7 @@ export interface HouseInput { title: string; countyId: number; townId: number; t
 export interface HouseForEdit { input: HouseInput; photos: { path: string; url: string }[] }
 export interface TenancyRow {
   id: string; houseId: string; houseTitle: string; unit: string; name: string; phone: string; emergencyName: string; emergencyPhone: string; emergencyRelationship: string;
-  rent: number; deposit: number; dueDay: number; status: "active" | "notice" | "ended"; code: string; joined: boolean;
+  rent: number; deposit: number; dueDay: number; status: "active" | "notice" | "ended"; code: string; joined: boolean; startedOn: string;
   agreementSignedOn: string | null; agreementPath: string | null;
   electricityEnabled: boolean; kplcPaybill: string | null; meterNumber: string | null; balance: number;
 }
@@ -191,7 +191,7 @@ export interface SmsOverview { balance: number; messages: SmsMessage[]; triggers
 export interface BroadcastResult { sent: number; failed: number; skipped: number; paused: boolean }
 export interface SubscriptionInfo { state: LandlordState; units: number; price: number; periodEnd: string | null; daysLeft: number | null; payments: { id: string; amount: number; ref: string; at: string }[]; lastAttempt: { status: string; at: string } | null }
 export interface ComplaintMsg { id: number; mine: boolean; body: string; at: string }
-export interface ComplaintItem { id: string; title: string; category: string; status: "open" | "in_progress" | "resolved"; priority: string; at: string; tenantName: string; unit: string; houseTitle: string; messages: ComplaintMsg[] }
+export interface ComplaintItem { id: string; tenancyId: string; title: string; category: string; status: "open" | "in_progress" | "resolved"; priority: string; at: string; tenantName: string; unit: string; houseTitle: string; messages: ComplaintMsg[] }
 export interface NoticeItem { id: string; title: string; body: string; at: string; houseId: string | null }
 export type PurchasePurpose = "subscription" | "sms_recharge";
 
@@ -208,6 +208,7 @@ export interface LandlordApi {
   updateVisit(visitId: string, patch: VisitPatch): Promise<void>;
   reschedule(visitId: string, date: string, window: string): Promise<void>;
   tenants(): Promise<TenancyRow[]>;
+  tenantLedger(tenancyId: string): Promise<LedgerRow[]>;
   addTenant(input: TenantInput): Promise<void>;
   endTenancy(id: string): Promise<void>;
   terminateTenantAccount(id: string): Promise<void>;
