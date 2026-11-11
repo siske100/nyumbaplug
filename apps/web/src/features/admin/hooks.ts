@@ -6,6 +6,7 @@ import { qk } from "@/lib/queryKeys";
 const useUid = () => useSession().data?.userId ?? "";
 const opts = { staleTime: 10_000 };
 export const useAdminPayouts = () => { const u = useUid(); return useQuery({ queryKey: [...qk.admin.all(u), "payouts"], queryFn: () => api.admin.payouts(), enabled: !!u, ...opts }); };
+export const useAdminPayoutDestinations = () => { const u = useUid(); return useQuery({ queryKey: [...qk.admin.all(u), "payout-destinations"], queryFn: () => api.admin.payoutDestinations(), enabled: !!u, ...opts }); };
 
 export const useAdminLandlords = () => { const u = useUid(); return useQuery({ queryKey: qk.admin.landlords(u), queryFn: () => api.admin.landlords(), enabled: !!u, ...opts }); };
 export const useAdminKyc = () => { const u = useUid(); return useQuery({ queryKey: qk.admin.kyc(u), queryFn: () => api.admin.kycQueue(), enabled: !!u, ...opts }); };

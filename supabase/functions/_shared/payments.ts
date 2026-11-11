@@ -18,7 +18,7 @@ export async function resolveCreds(d: PayDeps, landlordId: string): Promise<{ cr
   const r = await d.rpc("get_payment_credentials", { p_landlord: landlordId });
   if (r.error) throw fromDb(r.error);
   const row = (r.data as { mode: string; shortcode: string | null; cipher: string | null; status: string; callback_token: string }[] | null)?.[0];
-  if (!row || row.mode !== "own" || row.status !== "connected" || !row.cipher || !row.shortcode) {
+  if (!row || row.status !== "connected" || !row.cipher || !row.shortcode) {
     throw new HttpError(503, "Your landlord has not configured an active direct rent payment method. Contact your landlord before paying.");
   }
   try {
@@ -51,17 +51,21 @@ export async function tenantPay(d: PayDeps, i: {
 }) {
   if (!Number.isInteger(i.amount) || i.amount <= 0) throw new HttpError(400, "Enter a whole number of shillings greater than zero");
 
-  if (i.paymentMode && i.paymentMode !== "platform") {
+  const mode = i.paymentMode ?? "platform";
+  if (mode !== "platform" && mode !== "own") {
     throw new HttpError(409, "This rent payment method is not enabled for M-Pesa rent payments.");
   }
 
   const started = await d.rpc("start_tenant_payment_attempt", {
     p_tenancy: i.tenancyId, p_msisdn: i.phone, p_checkout: "pending-" + crypto.randomUUID(),
-    p_merchant: null, p_amount: i.amount,
+    p_merchant: null, p_amount: i.amount, p_mode: mode,
   });
   if (started.error) throw fromDb(started.error);
   const attemptId = started.data as string;
-  await sendPrompt(d, "tenant", attemptId, d.env.platform, d.env.platformToken, { amount: i.amount, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
+  const resolved = mode === "own"
+    ? await resolveCreds(d, i.landlordId)
+    : { creds: d.env.platform, token: d.env.platformToken };
+  await sendPrompt(d, "tenant", attemptId, resolved.creds, resolved.token, { amount: i.amount, phone: i.phone, accountRef: i.tenancyCode, description: "Rent" });
   return { amount: i.amount, message: "Check your phone and enter your M-Pesa PIN." };
 }
 
@@ -176,14 +180,17 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
 
   const found = await d.rpc("attempt_lookup", { p_checkout: cb.checkoutRequestId });
   if (found.error) throw fromDb(found.error);
-  const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string; bank_paybill_shortcode?: string | null } | null;
+  const look = found.data as { kind: "tenant" | "platform"; landlord_id: string; status: string; collection_mode?: string; bank_paybill_shortcode?: string | null } | null;
   if (!look) { console.error("callback for an unknown request", cb.checkoutRequestId); return ACK; }
 
   if (look.status === "succeeded" || look.status === "failed" || look.status === "timeout") return ACK;
   const bankShortcode = look.kind === "tenant" ? look.bank_paybill_shortcode : null;
   // Legacy bank-Paybill rent attempts are deliberately non-settleable after direct-only cutover.
   if (bankShortcode) return ACK;
-  const resolved = { creds: d.env.platform, token: d.env.platformToken };
+  const ownRoute = look.kind === "tenant" && look.collection_mode === "own";
+  const resolved = ownRoute
+    ? await resolveCreds(d, look.landlord_id)
+    : { creds: d.env.platform, token: d.env.platformToken };
   if (!safeEqual(token, resolved.token)) throw new HttpError(403, "Not allowed");
 
   if (cb.resultCode !== 0) {
@@ -207,12 +214,13 @@ export async function handleStkCallback(d: PayDeps, token: string, body: unknown
   return ACK;
 }
 
-async function c2bScope(d: PayDeps, token: string): Promise<{ landlordId: string }> {
+async function c2bScope(d: PayDeps, token: string): Promise<{ landlordId: string; shortcode: string }> {
   if (safeEqual(token, d.env.platformToken)) throw new HttpError(403, "Platform Paybill is not a rent collection route");
   const r = await d.rpc("account_by_token", { p_token: token });
-  const a = r.data as { landlord_id: string } | null;
-  if (r.error || !a) throw new HttpError(403, "Not allowed");
-  return { landlordId: a.landlord_id };
+  if (r.error) throw fromDb(r.error);
+  const a = r.data as { landlord_id: string; shortcode: string } | null;
+  if (!a || !a.landlord_id || !a.shortcode) throw new HttpError(403, "Not allowed");
+  return { landlordId: a.landlord_id, shortcode: a.shortcode };
 }
 
 /** Safaricom asks: should this manual Paybill payment be accepted? Only the exact full amount for a known account. */
@@ -220,6 +228,7 @@ export async function c2bValidate(d: PayDeps, token: string, body: unknown) {
   const scope = await c2bScope(d, token);
   const p = parseC2b(body);
   if (!p) return { ResultCode: "C2B00016", ResultDesc: "Rejected" };
+  if (p.shortcode !== scope.shortcode) return { ResultCode: "C2B00012", ResultDesc: "Rejected" };
   const r = await d.rpc("validate_c2b", { p_bill_ref: p.billRef, p_amount: wholeShillings(p.amount), p_landlord: scope.landlordId });
   if (r.error) throw fromDb(r.error);
   if (r.data === "ok") return ACK;
@@ -230,6 +239,7 @@ export async function c2bConfirm(d: PayDeps, token: string, body: unknown) {
   const scope = await c2bScope(d, token);
   const p = parseC2b(body);
   if (!p) throw new HttpError(400, "Invalid payment");
+  if (p.shortcode !== scope.shortcode) throw new HttpError(403, "Not allowed");
   const r = await d.rpc("record_c2b_payment", { p_bill_ref: p.billRef, p_amount: wholeShillings(p.amount), p_receipt: p.receipt, p_msisdn: p.msisdn, p_landlord: scope.landlordId });
   if (r.error) throw fromDb(r.error);
   if (typeof r.data === "string") await d.notifyPaid(r.data);
@@ -250,11 +260,13 @@ export async function connectDaraja(d: ConnectDeps, landlordId: string, input: R
   const creds: DarajaCreds = { ...secrets, shortcode };
 
   const info = await d.rpc("get_payment_credentials", { p_landlord: landlordId });
+  if (info.error) throw fromDb(info.error);
   const row = (info.data as { callback_token: string }[] | null)?.[0];
-  if (info.error || !row) throw new HttpError(404, "Payment account not found");
+  if (!row) throw new HttpError(404, "Payment account not found");
 
   const fail = async (reason: string) => {
-    await d.rpc("save_payment_credentials", { p_landlord: landlordId, p_shortcode: shortcode, p_kind: "paybill", p_cipher: null, p_key_version: null, p_status: "failed", p_reason: reason });
+    const saved = await d.rpc("save_payment_credentials", { p_landlord: landlordId, p_shortcode: shortcode, p_kind: "paybill", p_cipher: null, p_key_version: null, p_status: "failed", p_reason: reason });
+    if (saved.error) throw fromDb(saved.error);
     return { status: "failed" as const, reason };
   };
   try { await d.daraja.token(creds); } catch { return fail("Safaricom did not accept these keys"); }
@@ -284,8 +296,14 @@ export async function reconcilePending(d: PayDeps) {
         out.failed++;
         continue;
       }
+      const lookup = a.kind === "tenant" && !a.bank_paybill_shortcode
+        ? await d.rpc("attempt_lookup", { p_checkout: a.checkout })
+        : { data: null, error: null };
+      if (lookup.error) throw fromDb(lookup.error);
+      const collectionMode = (lookup.data as { collection_mode?: string } | null)?.collection_mode ?? "platform";
       const creds = a.kind === "platform" ? d.env.platform
-        : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode) : d.env.platform;
+        : a.bank_paybill_shortcode ? bankPaybillCreds(d, a.bank_paybill_shortcode)
+          : collectionMode === "own" ? (await resolveCreds(d, a.landlord_id)).creds : d.env.platform;
       const q = await d.daraja.stkQuery(creds, a.checkout);
       if (q.resultCode === -1) { out.waiting++; continue; }
       if (q.resultCode !== 0) {

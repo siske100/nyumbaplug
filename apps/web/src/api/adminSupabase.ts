@@ -1,7 +1,7 @@
 import { ApiError } from "@/lib/queryClient";
 import { supabase } from "@/lib/supabase";
 import { callFunction, dbError } from "./helpers";
-import type { AdminApi, AdminDashboardData, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, LandlordState, MarketplaceSettlement, SupportRequest, VisitStatus } from "./types";
+import type { AdminApi, AdminDashboardData, AdminKyc, AdminLandlord, AdminPayment, AdminPayout, AdminPayoutDestination, LandlordState, MarketplaceSettlement, SupportRequest, VisitStatus } from "./types";
 
 type Row = Record<string, unknown>;
 const num = (v: unknown) => Number(v ?? 0);
@@ -122,6 +122,20 @@ export const adminApi: AdminApi = {
     return (data as Row[]).map((r): AdminPayout => ({
       id: r.id as string, landlordName: (r.full_name as string) ?? "(no name)", amount: num(r.amount), destinationKind: r.destination_kind as string, destination: r.destination as string,
       accountRef: (r.account_ref as string | null) ?? null, status: r.status as string, ref: (r.provider_ref as string | null) ?? null, at: r.created_at as string, paidAt: (r.paid_at as string | null) ?? null,
+    }));
+  },
+  async payoutDestinations(): Promise<AdminPayoutDestination[]> {
+    const { data, error } = await supabase.from("admin_platform_payout_destinations")
+      .select("landlord_id, full_name, kind, destination, account_ref, updated_at")
+      .order("updated_at", { ascending: false });
+    if (error) throw dbError(error);
+    return (data as Row[]).map((r) => ({
+      landlordId: r.landlord_id as string,
+      landlordName: (r.full_name as string) ?? "(no name)",
+      kind: r.kind as AdminPayoutDestination["kind"],
+      destination: r.destination as string,
+      accountRef: (r.account_ref as string | null) ?? null,
+      updatedAt: r.updated_at as string,
     }));
   },
   async markPayoutPaid(id, ref) {

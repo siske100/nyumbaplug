@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { callFunction, currentUserId, dbError, toListing } from "./helpers";
 import type {
   BankPaymentSetup, BroadcastResult, ComplaintItem, HeldPayment, HouseForEdit, HouseInput, InviteResult, LandlordApi, LandlordHouse, LandlordState, LandlordSummary, LedgerRow, NoticeItem,
-  ManualRentPaymentClaim, PaymentAccount, PaymentsOverview, PayoutRow, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
+  ManualRentPaymentClaim, PaymentAccount, PaymentsOverview, PayoutRow, PayoutSummary, Place, SmsOverview, SubscriptionInfo, TenancyRow, VisitItem, VisitPatch, VisitStatus,
 } from "./types";
 
 type Row = Record<string, unknown>;
@@ -391,7 +391,7 @@ export const landlordApi: LandlordApi = {
         amount: num(r.amount), transactionMessage: r.transaction_message as string,
         status: r.status as ManualRentPaymentClaim["status"], submittedAt: r.submitted_at as string,
       })),
-      destination: dest ? { kind: dest.kind as "mpesa_phone" | "bank_paybill", destination: dest.destination as string, accountRef: (dest.account_ref as string | null) ?? null, verified: Boolean(dest.verified) } : null,
+      destination: dest ? { kind: dest.kind as "mpesa_phone" | "till" | "paybill", destination: dest.destination as string, accountRef: (dest.account_ref as string | null) ?? null, verified: Boolean(dest.verified) } : null,
       mode: ((ok(a) as Row | null)?.mode as PaymentAccount["mode"]) ?? "platform",
       owed: (ok(b) as Row[]).reduce((s, r) => s + Math.max(0, num(r.balance)), 0),
     };
@@ -404,11 +404,27 @@ export const landlordApi: LandlordApi = {
   async reversePayment(entryId, reason) { const { error } = await supabase.rpc("reverse_payment", { p_entry: entryId, p_reason: reason }); if (error) throw dbError(error); },
   async savePayoutDestination(kind, destination, accountRef) {
     const uid = await currentUserId();
-    const existing = await supabase.from("payout_destinations").select("landlord_id").maybeSingle();
-    const r = existing.data
-      ? await supabase.from("payout_destinations").update({ kind, destination, account_ref: accountRef }).eq("landlord_id", uid)
-      : await supabase.from("payout_destinations").insert({ landlord_id: uid, kind, destination, account_ref: accountRef });
+    const r = await supabase.from("payout_destinations").upsert(
+      { landlord_id: uid, kind, destination, account_ref: accountRef },
+      { onConflict: "landlord_id" },
+    );
     if (r.error) throw r.error.code === "23514" ? new ApiError(422, "Check the destination details") : dbError(r.error);
+  },
+  async payoutSummary(): Promise<PayoutSummary> {
+    const { data, error } = await supabase.rpc("my_payout_summary");
+    if (error || !data) throw dbError(error ?? { message: "Payout summary is unavailable", code: "PGRST116" });
+    const summary = data as Row;
+    return {
+      available: num(summary.available),
+      requested: num(summary.requested),
+      paidOut: num(summary.paidOut),
+      minimum: num(summary.minimum),
+      opensAt: (summary.opensAt as string | null) ?? null,
+    };
+  },
+  async requestPayout() {
+    const { error } = await supabase.rpc("request_payout");
+    if (error) throw dbError(error);
   },
 
   async paymentAccount(): Promise<PaymentAccount> {

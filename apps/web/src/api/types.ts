@@ -71,6 +71,7 @@ export interface AdminKyc {
 export interface AdminPayment { id: string; landlordId: string; landlordName: string; amount: number; ref: string; paidAt: string; byAdmin: boolean }
 export interface AdminCelcom { toppedUp: number; used: number; balance: number; low: boolean; monthSegments: number; monthRevenue: number; monthCost: number; monthProfit: number }
 export interface AdminPayout { id: string; landlordName: string; amount: number; destinationKind: string; destination: string; accountRef: string | null; status: string; ref: string | null; at: string; paidAt: string | null }
+export interface AdminPayoutDestination { landlordId: string; landlordName: string; kind: "mpesa_phone" | "till" | "paybill"; destination: string; accountRef: string | null; updatedAt: string }
 export interface AdminDashboardData {
   totalProperties: number;
   monthlyBookings: number;
@@ -106,6 +107,7 @@ export interface AdminApi {
   celcom(): Promise<AdminCelcom>;
   celcomTopup(amount: number, ref: string): Promise<void>;
   payouts(): Promise<AdminPayout[]>;
+  payoutDestinations(): Promise<AdminPayoutDestination[]>;
   markPayoutPaid(id: string, ref: string): Promise<void>;
   marketplaceSettlements(): Promise<MarketplaceSettlement[]>;
   settleMarketplaceBooking(id: string, action: "pay_marketer" | "refund_client", ref: string): Promise<void>;
@@ -171,7 +173,8 @@ export interface ManualRentPaymentClaim {
   id: string; tenancyId: string; tenantName: string; unit: string; amount: number; transactionMessage: string;
   status: "pending" | "received" | "rejected"; submittedAt: string;
 }
-export interface PaymentsOverview { ledger: LedgerRow[]; held: HeldPayment[]; payouts: PayoutRow[]; manualClaims: ManualRentPaymentClaim[]; destination: { kind: "mpesa_phone" | "bank_paybill"; destination: string; accountRef: string | null; verified: boolean } | null; mode: PaymentMode; owed: number }
+export interface PaymentsOverview { ledger: LedgerRow[]; held: HeldPayment[]; payouts: PayoutRow[]; manualClaims: ManualRentPaymentClaim[]; destination: { kind: "mpesa_phone" | "till" | "paybill"; destination: string; accountRef: string | null; verified: boolean } | null; mode: PaymentMode; owed: number }
+export interface PayoutSummary { available: number; requested: number; paidOut: number; minimum: number; opensAt: string | null }
 export interface PaymentAccount {
   mode: PaymentMode; shortcode: string | null; status: "not_connected" | "verifying" | "connected" | "failed"; failureReason: string | null;
 }
@@ -220,7 +223,9 @@ export interface LandlordApi {
   reviewManualRentPayment(claimId: string, received: boolean): Promise<void>;
   resolveHeld(heldId: string, tenancyId: string): Promise<void>;
   reversePayment(entryId: string, reason: string): Promise<void>;
-  savePayoutDestination(kind: "mpesa_phone" | "bank_paybill", destination: string, accountRef: string | null): Promise<void>;
+  savePayoutDestination(kind: "mpesa_phone" | "till" | "paybill", destination: string, accountRef: string | null): Promise<void>;
+  payoutSummary(): Promise<PayoutSummary>;
+  requestPayout(): Promise<void>;
   paymentAccount(): Promise<PaymentAccount>;
   bankPaymentSetup(): Promise<BankPaymentSetup>;
   saveManualBankAccount(bankId: number, accountNumber: string, accountName: string): Promise<void>;

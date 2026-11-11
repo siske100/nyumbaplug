@@ -23,7 +23,7 @@ const L = {
   Visits: lazy(() => import("@/pages/landlord/Visits")), Tenants: lazy(() => import("@/pages/landlord/Tenants")),
   TenantProfile: lazy(() => import("@/pages/landlord/TenantProfile")),
   Finances: lazy(() => import("@/pages/landlord/Finances")), Sms: lazy(() => import("@/pages/landlord/Sms")),
-  Plan: lazy(() => import("@/pages/landlord/Plan")), More: lazy(() => import("@/pages/landlord/More")),
+  Plan: lazy(() => import("@/pages/landlord/Plan")),
 };
 const T = { Layout: lazy(() => import("@/pages/tenant/TenantLayout")), Pay: lazy(() => import("@/pages/tenant/Pay")), Documents: lazy(() => import("@/pages/tenant/Documents")) };
 const A = {
@@ -63,7 +63,6 @@ export default function App() {
           <Route path="plan" element={<L.Plan />} />
           <Route path="complaints" element={<ComplaintsView role="landlord" />} />
           <Route path="notices" element={<NoticesView role="landlord" />} />
-          <Route path="more" element={<L.More />} />
           <Route path="support" element={<Support />} />
         </Route>
         <Route path="/tenant" element={<RequireRole role="tenant"><T.Layout /></RequireRole>}>

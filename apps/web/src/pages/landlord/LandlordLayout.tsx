@@ -1,4 +1,4 @@
-import { Building2, CalendarDays, CreditCard, Grid2x2, LayoutGrid, LifeBuoy, Users } from "lucide-react";
+import { Building2, CalendarDays, CreditCard, LayoutGrid, LifeBuoy, Users } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/layout/AppShell";
 
 export const LANDLORD_NAV: NavItem[] = [
@@ -9,6 +9,5 @@ export const LANDLORD_NAV: NavItem[] = [
   { to: "/landlord/finances", label: "Payments", icon: CreditCard },
   { to: "/landlord/plan", label: "Subscription", icon: CreditCard },
   { to: "/landlord/support", label: "Help & support", icon: LifeBuoy },
-  { to: "/landlord/more", label: "More", icon: Grid2x2 },
 ];
 export default function LandlordLayout() { return <AppShell items={LANDLORD_NAV} theme="landlord" />; }

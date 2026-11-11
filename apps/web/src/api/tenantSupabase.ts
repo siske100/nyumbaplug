@@ -33,7 +33,7 @@ export const tenantApi: TenantApi = {
         agreementSignedOn: t.agreement_signed_on ?? null, electricityEnabled: Boolean(t.electricity_enabled), kplcPaybill: t.kplc_paybill ?? null, meterNumber: t.meter_number ?? null,
         emergencyName: t.emergency_name, emergencyPhone: t.emergency_phone, emergencyRelationship: t.emergency_relationship,
       },
-      paymentMode: route.data === "platform" || route.data === "bank_paybill" ? route.data : "unavailable",
+      paymentMode: route.data === "platform" || route.data === "own" || route.data === "bank_paybill" ? route.data : "unavailable",
       manualBank: manualBank ? {
         bankName: manualBank.bank_name as string,
         accountNumber: manualBank.account_number as string,

@@ -47,7 +47,7 @@ export default function Payments({ embedded = false }: { embedded?: boolean }) {
       <div className="landlord-payment-summary">
       <Stats loading={isPending} items={[
         { label: "Received this month", value: formatKes(month), tone: "ok" }, { label: "Still owed", value: formatKes(data?.owed ?? 0), tone: (data?.owed ?? 0) > 0 ? "warn" : undefined },
-        { label: "Rent goes to", value: data?.mode === "own" ? "Your Paybill" : data?.mode === "bank_paybill" ? "Your bank account" : "Not configured", note: data?.mode === "own" ? "direct landlord settlement" : data?.mode === "bank_paybill" ? "manual transfers need your confirmation" : "choose a rent payment method in setup" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
+        { label: "Rent collection", value: data?.mode === "bank_paybill" ? "Manual bank transfer" : data?.mode === "own" ? "Safaricom Daraja" : "Platform M-Pesa", note: data?.mode === "bank_paybill" ? "you confirm each bank transfer" : data?.mode === "own" ? "tenants pay directly to your Paybill" : "admin-reviewed landlord payouts" }, { label: "Held payments", value: String(data?.held.length ?? 0), tone: data?.held.length ? "warn" : undefined },
       ]} />
       </div>
 
@@ -108,8 +108,8 @@ export default function Payments({ embedded = false }: { embedded?: boolean }) {
 
       {data && data.payouts.length > 0 && (
         <Panel className="p-5 sm:p-6">
-          <h2 className="text-xl">Historical platform payouts</h2>
-          <p className="mt-1 text-sm text-graphite-300">These are records from the previous collection model. New rent is never collected by HousePlug Kenya or placed in this payout queue.</p>
+          <h2 className="text-xl">Platform payouts</h2>
+          <p className="mt-1 text-sm text-graphite-300">Payouts requested from platform-collected rent are manually reviewed and processed by an admin.</p>
           <ul className="mt-3 divide-y divide-white/8">{data.payouts.map((p) => <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5"><span>{fmtDate(p.at)} · {formatKes(p.amount)}</span><span className="flex items-center gap-2 text-sm text-graphite-300">{p.ref}<Chip tone={p.status === "paid" ? "ok" : "ember"}>{p.status}</Chip></span></li>)}</ul>
         </Panel>
       )}

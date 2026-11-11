@@ -74,6 +74,21 @@ Deno.test("tenant payments reject invalid amounts and manual bank mode", async (
   eq(pushes.length, 0);
 });
 
+Deno.test("tenant payments use the landlord's verified Daraja credentials and callback token", async () => {
+  const f = fake({
+    start_tenant_payment_attempt: () => ({ data: "own-attempt" }),
+    get_payment_credentials: ownAccount(),
+    bind_payment_attempt: () => ({}),
+  });
+  const { d, pushes } = mkDaraja();
+  await tenantPay(payDeps(f, d), {
+    tenancyId: "t", landlordId: "l1", tenancyCode: "ZZ99", phone: "0712345678", paymentMode: "own", amount: 12000,
+  });
+  eq(f.last("start_tenant_payment_attempt")!.p_mode, "own");
+  eq(pushes[0]!.creds, OWN);
+  eq(pushes[0]!.req.callbackUrl, "https://x.supabase.co/functions/v1/daraja-stk-callback/LLTOKEN");
+});
+
 Deno.test("tenant payment prompt failures mark the attempt failed", async () => {
   const restore = quiet();
   const f = fake({ start_tenant_payment_attempt: () => ({ data: "att" }) });
@@ -206,6 +221,20 @@ Deno.test("callback: a successful payment is checked with Safaricom, credited on
   eq(notified, ["ledger-9"]);
 });
 
+Deno.test("callback: landlord Daraja payments are verified on the landlord account", async () => {
+  const notified: string[] = [];
+  const f = fake({
+    attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending", collection_mode: "own" } }),
+    get_payment_credentials: ownAccount(),
+    confirm_payment: () => ({ data: "own-ledger" }),
+  });
+  const { d, queryCreds } = mkDaraja();
+  await handleStkCallback(payDeps(f, d, notified), "LLTOKEN", cb());
+  eq(queryCreds, [OWN]);
+  eq(f.last("confirm_payment")!.p_checkout, "ws_CO_1");
+  eq(notified, ["own-ledger"]);
+});
+
 Deno.test("callback: legacy bank Paybill rent attempts are ignored after direct-only cutover", async () => {
   const f = fake({
     attempt_lookup: () => ({ data: { kind: "tenant", landlord_id: "l1", status: "pending", bank_paybill_shortcode: "523456" } }),
@@ -252,27 +281,29 @@ Deno.test("callback: landlord purchases are confirmed against the platform Paybi
 });
 
 Deno.test("manual Paybill: wrong secret refused, wrong amounts and accounts rejected with Safaricom's codes", async () => {
-  const body = { TransID: "RKTQDM7W6S", TransAmount: "6500.00", BillRefNumber: "ABCD1234", MSISDN: "254712345678" };
-  const f = fake({ account_by_token: (a) => ({ data: a.p_token === "LLTOKEN" ? { landlord_id: "l1" } : null }), validate_c2b: () => ({ data: "ok" }) });
+  const body = { BusinessShortCode: "600123", TransID: "RKTQDM7W6S", TransAmount: "6500.00", BillRefNumber: "ABCD1234", MSISDN: "254712345678" };
+  const f = fake({ account_by_token: (a) => ({ data: a.p_token === "LLTOKEN" ? { landlord_id: "l1", shortcode: "600123" } : null }), validate_c2b: () => ({ data: "ok" }) });
   const dep = payDeps(f, mkDaraja().d);
   await rejectsWith(() => c2bValidate(dep, "BAD", body), 403);
   await rejectsWith(() => c2bValidate(dep, "PLATFORMTOKEN", body), 403, /not a rent collection route/);
   await c2bValidate(dep, "LLTOKEN", body);
   eq(f.last("validate_c2b")!.p_landlord, "l1");
   for (const [answer, code] of [["unknown_account", "C2B00012"], ["amount_mismatch", "C2B00013"], ["nothing_due", "C2B00013"]]) {
-    const g = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), validate_c2b: () => ({ data: answer }) });
+    const g = fake({ account_by_token: () => ({ data: { landlord_id: "l1", shortcode: "600123" } }), validate_c2b: () => ({ data: answer }) });
     eq((await c2bValidate(payDeps(g, mkDaraja().d), "LLTOKEN", body)).ResultCode, code);
   }
+  const wrongShortcode = { ...body, BusinessShortCode: "999999" };
+  eq((await c2bValidate(dep, "LLTOKEN", wrongShortcode)).ResultCode, "C2B00012");
   await rejectsWith(() => c2bValidate(dep, "PLATFORMTOKEN", { junk: 1 }), 403, /not a rent collection route/);
 });
 
 Deno.test("manual Paybill: the payment is recorded and the tenant told, only when it was credited", async () => {
-  const body = { TransID: "RKTQDM7W6S", TransAmount: "6500", BillRefNumber: "ABCD1234", MSISDN: "254712345678" };
+  const body = { BusinessShortCode: "600123", TransID: "RKTQDM7W6S", TransAmount: "6500", BillRefNumber: "ABCD1234", MSISDN: "254712345678" };
   const notified: string[] = [];
-  const f = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), record_c2b_payment: () => ({ data: "ledger-1" }) });
+  const f = fake({ account_by_token: () => ({ data: { landlord_id: "l1", shortcode: "600123" } }), record_c2b_payment: () => ({ data: "ledger-1" }) });
   await c2bConfirm(payDeps(f, mkDaraja().d, notified), "LLTOKEN", body);
   eq(notified, ["ledger-1"]); eq(f.last("record_c2b_payment")!.p_msisdn, "0712345678");
-  const held = fake({ account_by_token: () => ({ data: { landlord_id: "l1" } }), record_c2b_payment: () => ({ data: null }) });
+  const held = fake({ account_by_token: () => ({ data: { landlord_id: "l1", shortcode: "600123" } }), record_c2b_payment: () => ({ data: null }) });
   const n2: string[] = [];
   await c2bConfirm(payDeps(held, mkDaraja().d, n2), "LLTOKEN", body);
   eq(n2, []);

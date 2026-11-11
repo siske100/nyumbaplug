@@ -118,7 +118,7 @@ export default function Pay() {
                 className="w-full rounded-[10px] border border-white/10 bg-graphite-900/60 px-3.5 py-2.5 text-bone focus:border-ember-400/70 focus:outline-none" />
               <span className="text-xs text-graphite-400">Maximum now: {formatKes(maxPayment)} (balance plus up to 12 months of rent; pending payments may lower the limit).</span>
             </label>}
-            {h.paymentMode === "platform" && <Button magnetic size="md" loading={pay.isPending} disabled={waiting || !validPaymentAmount} onClick={() => { before.current = { attemptId: h.lastAttempt?.id ?? null }; setCelebrate(false); pay.mutate(selectedAmount, { onSuccess: () => setWaiting(true) }); }}>
+            {(h.paymentMode === "platform" || h.paymentMode === "own") && <Button magnetic size="md" loading={pay.isPending} disabled={waiting || !validPaymentAmount} onClick={() => { before.current = { attemptId: h.lastAttempt?.id ?? null }; setCelebrate(false); pay.mutate(selectedAmount, { onSuccess: () => setWaiting(true) }); }}>
               {waiting ? "Waiting for M-Pesa..." : `Pay ${validPaymentAmount ? formatKes(selectedAmount) : "rent"} with M-Pesa`}
             </Button>}
             {h.paymentMode === "bank_paybill" && h.manualBank && (
