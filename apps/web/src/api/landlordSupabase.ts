@@ -403,11 +403,11 @@ export const landlordApi: LandlordApi = {
   },
   async reversePayment(entryId, reason) { const { error } = await supabase.rpc("reverse_payment", { p_entry: entryId, p_reason: reason }); if (error) throw dbError(error); },
   async savePayoutDestination(kind, destination, accountRef) {
-    const uid = await currentUserId();
-    const r = await supabase.from("payout_destinations").upsert(
-      { landlord_id: uid, kind, destination, account_ref: accountRef },
-      { onConflict: "landlord_id" },
-    );
+    const r = await supabase.rpc("save_payout_destination", {
+      p_kind: kind,
+      p_destination: destination,
+      p_account_ref: accountRef,
+    });
     if (r.error) throw r.error.code === "23514" ? new ApiError(422, "Check the destination details") : dbError(r.error);
   },
   async payoutSummary(): Promise<PayoutSummary> {

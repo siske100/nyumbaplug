@@ -257,6 +257,21 @@ describe("payment credentials and manual payouts", () => {
     assert.deepEqual(await call(db, user(w.la), "select mode, status, failure_reason from payment_accounts"), { mode: "own", status: "failed", failure_reason: "Safaricom rejected the keys" });
     assert.equal((await as(db, user(w.ta), "select tenant_payment_route() route"))[0].route, null);
   });
+  it("landlords can save only their own valid Safaricom payout destination", async () => {
+    await as(db, user(w.la), "select save_payout_destination('mpesa_phone','0712345678',null)");
+    assert.deepEqual(await call(db, user(w.la), "select kind, destination, account_ref, verified from payout_destinations"), {
+      kind: "mpesa_phone", destination: "0712345678", account_ref: null, verified: false,
+    });
+    await sql(db, "update payout_destinations set verified=true where landlord_id=$1", [w.la]);
+    await as(db, user(w.la), "select save_payout_destination('mpesa_phone','0712345678',null)");
+    assert.equal((await call(db, user(w.la), "select verified from payout_destinations")).verified, true);
+    await as(db, user(w.la), "select save_payout_destination('paybill','123456','RENT')");
+    assert.deepEqual(await call(db, user(w.la), "select kind, destination, account_ref, verified from payout_destinations"), {
+      kind: "paybill", destination: "123456", account_ref: "RENT", verified: false,
+    });
+    await rejects(as(db, user(w.la), "select save_payout_destination('paybill','123456',null)"), /account reference/);
+    await rejects(as(db, user(w.admin), "select save_payout_destination('mpesa_phone','0712345678',null)"), /not active/);
+  });
   it("the admin sees payouts and records the M-Pesa reference once", async () => {
     await sql(db, "insert into payout_destinations(landlord_id,kind,destination,verified) values ($1,'mpesa_phone','0712345678',true)", [w.lb]);
     await sql(db, "update payout_destinations set updated_at=now()-interval '2 days' where landlord_id=$1", [w.lb]);
